@@ -27,11 +27,11 @@ namespace bq {
     template <typename Allocator>
     class allocator_traits {
     private:
-        template <typename A, typename = void>
+        template <typename A>
         struct extract_allocator_template;
 
         template <template <typename> class Wrapper, typename Inner>
-        struct extract_allocator_template<Wrapper<Inner>, void> {
+        struct extract_allocator_template<Wrapper<Inner>> {
             template <typename U>
             using rebind = Wrapper<U>;
         };
