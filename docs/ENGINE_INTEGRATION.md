@@ -37,7 +37,14 @@ For more examples, refer to `/demo/csharp` directory in the repository.
 
 ## Unreal Engine
 
+Supports both UE4 and UE5. Pick any one of the following ways to integrate.
+
 ### Integration
+
+- **Fab (recommended)**
+  - Install from the Epic Fab listing: [BqLog on Fab](https://www.fab.com/listings/386d1c78-e164-4e97-8b3e-e88cbf9b6acf);
+  - Use the Epic Games Launcher / Fab client to add the plugin to your engine, then enable it in your project — no manual download or unzip required;
+  - Recommended when you want the easiest installation and automatic updates through Fab.
 
 - **Prebuilt**
   - Download `unreal_plugin_prebuilt_ue4_{version}` or `unreal_plugin_prebuilt_ue5_{version}` (depending on your engine version) from the [Releases page](https://github.com/Tencent/BqLog/releases);
