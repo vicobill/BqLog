@@ -37,7 +37,14 @@ log.info("Hello from Unity! value:{}", 42);
 
 ## Unreal Engine
 
+同时支持 UE4 与 UE5。可任选以下一种方式集成。
+
 ### 集成方式
+
+- **Fab（推荐）**
+  - 通过 Epic Fab 商城直接安装：[BqLog on Fab](https://www.fab.com/listings/386d1c78-e164-4e97-8b3e-e88cbf9b6acf)；
+  - 在 Epic Games Launcher / Fab 客户端中将插件添加到引擎，然后在工程中启用即可，无需手动下载解压；
+  - 适合希望以最简方式安装并通过 Fab 自动获取更新的用户。
 
 - **预编译版（Prebuilt）**
   - 从 [Releases 页面](https://github.com/Tencent/BqLog/releases)根据引擎版本下载 `unreal_plugin_prebuilt_ue4_{version}` 或 `unreal_plugin_prebuilt_ue5_{version}`；
