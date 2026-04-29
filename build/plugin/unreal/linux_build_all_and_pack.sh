@@ -68,9 +68,10 @@ for ue_version in "${UE_VERSIONS[@]}"; do
   sed -i "s/\"VersionName\": \"1.0\"/\"VersionName\": \"$VERSION\"/" "$TARGET_DIR/BqLog.uplugin"
   # Replace EngineVersion based on UE major version
   if [[ "$ue_version" == "ue4" ]]; then
-    sed -i "s/\"EngineVersion\": \"0.0\"/\"EngineVersion\": \"4.27\"/" "$TARGET_DIR/BqLog.uplugin"
-  else
-    sed -i "s/\"EngineVersion\": \"0.0\"/\"EngineVersion\": \"5.7\"/" "$TARGET_DIR/BqLog.uplugin"
+    sed -i "s/\"EngineVersion\": \"5.7\"/\"EngineVersion\": \"4.27\"/" "$TARGET_DIR/BqLog.uplugin"
+    sed -i 's/"PlatformAllowList"/"WhitelistPlatforms"/g' "$TARGET_DIR/BqLog.uplugin"
+    sed -i 's/"PlatformDenyList"/"BlacklistPlatforms"/g' "$TARGET_DIR/BqLog.uplugin"
+    sed -i 's/"LinuxArm64"/"LinuxAArch64"/g' "$TARGET_DIR/BqLog.uplugin"
   fi
 
   # Remove .gitkeep files before zipping

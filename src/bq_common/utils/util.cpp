@@ -665,8 +665,8 @@ namespace bq {
                     *dst_ptr++ = static_cast<char>(*src++);
                 }
             } else if (c < 0x800) {
-                *dst_ptr++ = static_cast<char>(0xC0 | (c >> 6));
-                *dst_ptr++ = static_cast<char>(0x80 | (c & 0x3F));
+                *dst_ptr++ = static_cast<char>(static_cast<unsigned char>(0xC0 | (c >> 6)));
+                *dst_ptr++ = static_cast<char>(static_cast<unsigned char>(0x80 | (c & 0x3F)));
             } else if (c >= 0xD800 && c <= 0xDFFF) {
                 if (c >= 0xDC00) {
                     continue;
@@ -676,16 +676,16 @@ namespace bq {
                     if (c2 >= 0xDC00 && c2 <= 0xDFFF) {
                         src++;
                         c = (((c & 0x3FF) << 10) | (c2 & 0x3FF)) + 0x10000;
-                        *dst_ptr++ = static_cast<char>(0xF0 | (c >> 18));
-                        *dst_ptr++ = static_cast<char>(0x80 | ((c >> 12) & 0x3F));
-                        *dst_ptr++ = static_cast<char>(0x80 | ((c >> 6) & 0x3F));
-                        *dst_ptr++ = static_cast<char>(0x80 | (c & 0x3F));
+                        *dst_ptr++ = static_cast<char>(static_cast<unsigned char>(0xF0 | (c >> 18)));
+                        *dst_ptr++ = static_cast<char>(static_cast<unsigned char>(0x80 | ((c >> 12) & 0x3F)));
+                        *dst_ptr++ = static_cast<char>(static_cast<unsigned char>(0x80 | ((c >> 6) & 0x3F)));
+                        *dst_ptr++ = static_cast<char>(static_cast<unsigned char>(0x80 | (c & 0x3F)));
                     }
                 }
             } else {
-                *dst_ptr++ = static_cast<char>(0xE0 | (c >> 12));
-                *dst_ptr++ = static_cast<char>(0x80 | ((c >> 6) & 0x3F));
-                *dst_ptr++ = static_cast<char>(0x80 | (c & 0x3F));
+                *dst_ptr++ = static_cast<char>(static_cast<unsigned char>(0xE0 | (c >> 12)));
+                *dst_ptr++ = static_cast<char>(static_cast<unsigned char>(0x80 | ((c >> 6) & 0x3F)));
+                *dst_ptr++ = static_cast<char>(static_cast<unsigned char>(0x80 | (c & 0x3F)));
             }
         }
         return static_cast<uint32_t>(dst_ptr - dst);
@@ -752,15 +752,15 @@ namespace bq {
                     } else {
                         // Simple fallback logic
                         if (c < 0x800) {
-                            *dst_ptr++ = static_cast<char>(0xC0 | (c >> 6));
-                            *dst_ptr++ = static_cast<char>(0x80 | (c & 0x3F));
+                            *dst_ptr++ = static_cast<char>(static_cast<unsigned char>(0xC0 | (c >> 6)));
+                            *dst_ptr++ = static_cast<char>(static_cast<unsigned char>(0x80 | (c & 0x3F)));
                         } else if (c >= 0xD800 && c <= 0xDFFF) {
                             src_ptr += i;
                             goto scalar_utf16; // break out to scalar
                         } else {
-                            *dst_ptr++ = static_cast<char>(0xE0 | (c >> 12));
-                            *dst_ptr++ = static_cast<char>(0x80 | ((c >> 6) & 0x3F));
-                            *dst_ptr++ = static_cast<char>(0x80 | (c & 0x3F));
+                            *dst_ptr++ = static_cast<char>(static_cast<unsigned char>(0xE0 | (c >> 12)));
+                            *dst_ptr++ = static_cast<char>(static_cast<unsigned char>(0x80 | ((c >> 6) & 0x3F)));
+                            *dst_ptr++ = static_cast<char>(static_cast<unsigned char>(0x80 | (c & 0x3F)));
                         }
                     }
                 }
@@ -1598,17 +1598,17 @@ namespace bq {
             if (codepoint < 0x80) {
                 dst_utf8_str[result_len++] = static_cast<char>(codepoint);
             } else if (codepoint < 0x0800) {
-                dst_utf8_str[result_len++] = static_cast<char>(0xC0 | (codepoint >> 6));
-                dst_utf8_str[result_len++] = static_cast<char>(0x80 | (codepoint & 0x3F));
+                dst_utf8_str[result_len++] = static_cast<char>(static_cast<unsigned char>(0xC0 | (codepoint >> 6)));
+                dst_utf8_str[result_len++] = static_cast<char>(static_cast<unsigned char>(0x80 | (codepoint & 0x3F)));
             } else if (codepoint < 0x10000) {
-                dst_utf8_str[result_len++] = static_cast<char>(0xE0 | (codepoint >> 12));
-                dst_utf8_str[result_len++] = static_cast<char>(0x80 | ((codepoint >> 6) & 0x3F));
-                dst_utf8_str[result_len++] = static_cast<char>(0x80 | (codepoint & 0x3F));
+                dst_utf8_str[result_len++] = static_cast<char>(static_cast<unsigned char>(0xE0 | (codepoint >> 12)));
+                dst_utf8_str[result_len++] = static_cast<char>(static_cast<unsigned char>(0x80 | ((codepoint >> 6) & 0x3F)));
+                dst_utf8_str[result_len++] = static_cast<char>(static_cast<unsigned char>(0x80 | (codepoint & 0x3F)));
             } else {
-                dst_utf8_str[result_len++] = static_cast<char>(0xF0 | (codepoint >> 18));
-                dst_utf8_str[result_len++] = static_cast<char>(0x80 | ((codepoint >> 12) & 0x3F));
-                dst_utf8_str[result_len++] = static_cast<char>(0x80 | ((codepoint >> 6) & 0x3F));
-                dst_utf8_str[result_len++] = static_cast<char>(0x80 | (codepoint & 0x3F));
+                dst_utf8_str[result_len++] = static_cast<char>(static_cast<unsigned char>(0xF0 | (codepoint >> 18)));
+                dst_utf8_str[result_len++] = static_cast<char>(static_cast<unsigned char>(0x80 | ((codepoint >> 12) & 0x3F)));
+                dst_utf8_str[result_len++] = static_cast<char>(static_cast<unsigned char>(0x80 | ((codepoint >> 6) & 0x3F)));
+                dst_utf8_str[result_len++] = static_cast<char>(static_cast<unsigned char>(0x80 | (codepoint & 0x3F)));
             }
         }
         assert(result_len <= dst_character_num && "target buffer of utf16_to_utf8 is not enough!");
@@ -1690,7 +1690,7 @@ namespace bq {
         {
             return written_character_num;
         }
-        dst[written_character_num] = static_cast<char>(0xFF);
+        dst[written_character_num] = static_cast<char>(static_cast<unsigned char>(0xFF));
         BQ_UNLIKELY_IF(written_character_num < src_character_num)
         {
             auto left_chars = src_character_num - written_character_num;

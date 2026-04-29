@@ -6304,8 +6304,34 @@ jobs:
               # UE4 ModuleDescriptor.cpp only recognizes the legacy key names.
               sed -i 's/"PlatformAllowList"/"WhitelistPlatforms"/g' "$uplugin"
               sed -i 's/"PlatformDenyList"/"BlacklistPlatforms"/g' "$uplugin"
-              # UE4 Linux arm64 target is spelled LinuxAArch64.
+              # UE4 Linux arm64 target is spelled LinuxAArch64 (added in 4.25).
               sed -i 's/"LinuxArm64"/"LinuxAArch64"/g' "$uplugin"
+
+              # UE 4.22~4.24 predate several tokens we use by default:
+              #   - ModuleHostType.UncookedOnly was introduced in 4.24.
+              #     4.22/4.23 reject it with "Missing or invalid 'Type' field"
+              #     (Enum.TryParse<ModuleHostType> fails). Fall back to Editor,
+              #     which is the closest pre-4.24 equivalent for BqLogBPNodes
+              #     (blueprint-graph helpers that only load inside the editor).
+              #   - UnrealTargetPlatform.LinuxAArch64 was introduced in 4.25.
+              #     4.22/4.23/4.24 reject the platform name with
+              #     "The platform name LinuxAArch64 is not a valid platform name".
+              if (( ue_minor < 24 )); then
+                # 4.22, 4.23: strip UncookedOnly entirely.
+                sed -i 's/"UncookedOnly"/"Editor"/g' "$uplugin"
+              fi
+              if (( ue_minor < 25 )); then
+                # 4.22, 4.23, 4.24: remove LinuxAArch64 (with surrounding comma
+                # and optional whitespace) from platform arrays.
+                #   ", \"LinuxAArch64\"" → ""   (middle or tail element)
+                #   "\"LinuxAArch64\", "  → ""  (leading element)
+                #   "\"LinuxAArch64\""    → ""  (sole element, fallback)
+                sed -i -E \
+                  -e 's/,[[:space:]]*"LinuxAArch64"//g' \
+                  -e 's/"LinuxAArch64"[[:space:]]*,[[:space:]]*//g' \
+                  -e 's/"LinuxAArch64"//g' \
+                  "$uplugin"
+              fi
             fi
           }
 
@@ -6734,9 +6760,10 @@ jobs:
             sed -i "s/\"Version\": 1/\"Version\": $VERSION_INT/" "$plugin_dir/BqLog.uplugin"
             sed -i "s/\"VersionName\": \"1.0\"/\"VersionName\": \"$VERSION\"/" "$plugin_dir/BqLog.uplugin"
             if [[ "$ue" == "ue4" ]]; then
-              sed -i "s/\"EngineVersion\": \"0.0\"/\"EngineVersion\": \"4.27\"/" "$plugin_dir/BqLog.uplugin"
-            else
-              sed -i "s/\"EngineVersion\": \"0.0\"/\"EngineVersion\": \"5.7\"/" "$plugin_dir/BqLog.uplugin"
+              sed -i "s/\"EngineVersion\": \"5.7\"/\"EngineVersion\": \"4.27\"/" "$plugin_dir/BqLog.uplugin"
+              sed -i 's/"PlatformAllowList"/"WhitelistPlatforms"/g' "$plugin_dir/BqLog.uplugin"
+              sed -i 's/"PlatformDenyList"/"BlacklistPlatforms"/g' "$plugin_dir/BqLog.uplugin"
+              sed -i 's/"LinuxArm64"/"LinuxAArch64"/g' "$plugin_dir/BqLog.uplugin"
             fi
 
             rm -rf "$plugin_dir/Binaries/Win64" "$plugin_dir/Binaries/Win64Arm64" "$plugin_dir/Binaries/Linux" "$plugin_dir/Binaries/LinuxAArch64" "$plugin_dir/Binaries/Mac" "$plugin_dir/Binaries/IOS"
@@ -6818,6 +6845,19 @@ jobs:
               sed -i 's/"PlatformAllowList"/"WhitelistPlatforms"/g' "$uplugin"
               sed -i 's/"PlatformDenyList"/"BlacklistPlatforms"/g' "$uplugin"
               sed -i 's/"LinuxArm64"/"LinuxAArch64"/g' "$uplugin"
+
+              # 4.22/4.23: no UncookedOnly (added in 4.24). Fall back to Editor.
+              if (( ue_minor < 24 )); then
+                sed -i 's/"UncookedOnly"/"Editor"/g' "$uplugin"
+              fi
+              # 4.22~4.24: no LinuxAArch64 target (added in 4.25). Strip it.
+              if (( ue_minor < 25 )); then
+                sed -i -E \
+                  -e 's/,[[:space:]]*"LinuxAArch64"//g' \
+                  -e 's/"LinuxAArch64"[[:space:]]*,[[:space:]]*//g' \
+                  -e 's/"LinuxAArch64"//g' \
+                  "$uplugin"
+              fi
             fi
           }
 

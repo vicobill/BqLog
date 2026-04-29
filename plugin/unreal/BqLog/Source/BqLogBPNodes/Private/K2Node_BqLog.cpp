@@ -270,8 +270,8 @@ void UK2Node_BqLogFormat::RemoveInputPin(UEdGraphPin* Pin)
         Pin->BreakAllPinLinks();
         ReconstructNode();
         FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(GetBlueprint());
-        if (UEdGraph* Graph = GetGraph()) { 
-#if ENGINE_MAJOR_VERSION >= 5
+        if (UEdGraph* Graph = GetGraph()) {
+#if (ENGINE_MAJOR_VERSION > 5) || (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 3)
             Graph->NotifyNodeChanged(this);
 #else
             Graph->NotifyGraphChanged();
@@ -820,7 +820,7 @@ void UK2Node_BqLogFormat::PostEditChangeProperty(struct FPropertyChangedEvent& P
     Super::PostEditChangeProperty(PropertyChangedEvent);
     if (UEdGraph* Graph = GetGraph())
     {
-#if ENGINE_MAJOR_VERSION >= 5
+#if (ENGINE_MAJOR_VERSION > 5) || (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 3)
         Graph->NotifyNodeChanged(this);
 #else
         Graph->NotifyGraphChanged();
