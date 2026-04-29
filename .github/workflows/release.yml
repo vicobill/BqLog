@@ -170,6 +170,7 @@ jobs:
         if: ${{ hashFiles('release_assets_fab/*') != '' }}
         uses: softprops/action-gh-release@v3
         with:
+          token: ${{ secrets.FAB_RELEASE_TOKEN }}
           repository: pippocao/BqLogFabRelease
           tag_name: ${{ steps.version.outputs.tag }}
           name: ${{ steps.version.outputs.release_name }} (Fab assets)
@@ -183,8 +184,6 @@ jobs:
           draft: false
           prerelease: false
           files: release_assets_fab/*
-        env:
-          GITHUB_TOKEN: ${{ secrets.FAB_RELEASE_TOKEN }}
 
   # Publish Python wheel to PyPI
   publish_pypi:

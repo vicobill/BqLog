@@ -6295,9 +6295,9 @@ jobs:
             local ue_minor="$3"          # 22, 23, ... 27 or 0, 1, ... 7
             local uplugin="$plugin_dir/BqLog.uplugin"
 
-            # Set EngineVersion to the exact "X.Y.0" Fab expects.
+            # Set EngineVersion to "X.Y"
             sed -i -E \
-              "s/\"EngineVersion\"[[:space:]]*:[[:space:]]*\"[^\"]*\"/\"EngineVersion\": \"${ue_major}.${ue_minor}.0\"/" \
+              "s/\"EngineVersion\"[[:space:]]*:[[:space:]]*\"[^\"]*\"/\"EngineVersion\": \"${ue_major}.${ue_minor}\"/" \
               "$uplugin"
 
             if [[ "$ue_major" == "4" ]]; then
@@ -6451,6 +6451,13 @@ jobs:
       - name: Publish test release to pippocao/BqLogFabRelease
         uses: softprops/action-gh-release@v3
         with:
+          # Pass the cross-repo PAT via the `token` input, not env.GITHUB_TOKEN.
+          # softprops/action-gh-release@v3's `token` input defaults to
+          # `${{ github.token }}` and that default silently wins over any
+          # GITHUB_TOKEN env var — using env alone causes 403 "Resource not
+          # accessible by integration" because github.token can't write to
+          # another repo.
+          token: ${{ secrets.FAB_RELEASE_TOKEN }}
           repository: pippocao/BqLogFabRelease
           # Suffix with run_id so repeated smoke-test runs never collide on tag.
           tag_name: Test_Release_${{ needs.extract_version.outputs.version }}_${{ github.run_id }}
@@ -6464,8 +6471,6 @@ jobs:
           draft: false
           prerelease: true
           files: fab_release_assets/*
-        env:
-          GITHUB_TOKEN: ${{ secrets.FAB_RELEASE_TOKEN }}
 
   unreal_plugin_build_on_win64:
     runs-on: windows-latest
@@ -6806,7 +6811,7 @@ jobs:
             local uplugin="$plugin_dir/BqLog.uplugin"
 
             sed -i -E \
-              "s/\"EngineVersion\"[[:space:]]*:[[:space:]]*\"[^\"]*\"/\"EngineVersion\": \"${ue_major}.${ue_minor}.0\"/" \
+              "s/\"EngineVersion\"[[:space:]]*:[[:space:]]*\"[^\"]*\"/\"EngineVersion\": \"${ue_major}.${ue_minor}\"/" \
               "$uplugin"
 
             if [[ "$ue_major" == "4" ]]; then
