@@ -10,6 +10,7 @@ set "PUBLIC_DIR=%TARGET_DIR%\Source\BqLog\Public"
 set "PRIVATE_DIR=%TARGET_DIR%\Source\BqLog\Private"
 set "DIST_DIR=%ROOT_DIR%\dist"
 set "THIRDPARTY_DIR=%TARGET_DIR%\Source\ThirdParty\BqLog"
+set "CORE_DIR=%PRIVATE_DIR%\BqLogCore"
 
 if not exist "%DIST_DIR%" mkdir "%DIST_DIR%" >nul
 if not exist "%TMP_DIR%" mkdir "%TMP_DIR%" >nul
@@ -46,26 +47,30 @@ for %%T in (ue4 ue5) do (
     rmdir /S /Q "%TARGET_DIR%\Binaries"
     if errorlevel 8 exit /b 8
 
-    REM BqLog core library -> ThirdParty directory (third-party declaration for Fab)
+    REM BqLog core: headers -> Source/ThirdParty/BqLog/include (Fab attribution).
+    REM LICENSE lives under ThirdParty too. .cpp implementation tree is copied
+    REM into Source/BqLog/Private/BqLogCore/ so UBT picks it up via the standard
+    REM module source scan -- no ConditionalAddModuleDirectory (4.26+ only)
+    REM needed, so the plugin is buildable on UE 4.22 through UE 5.x.
     mkdir "%THIRDPARTY_DIR%\include" >nul 2>&1
-    mkdir "%THIRDPARTY_DIR%\src" >nul 2>&1
+    mkdir "%CORE_DIR%" >nul 2>&1
 
     robocopy "%ROOT_DIR%\include" "%THIRDPARTY_DIR%\include" /E >nul
     if errorlevel 8 exit /b 8
 
-    robocopy "%ROOT_DIR%\src\bq_log" "%THIRDPARTY_DIR%\src\bq_log" /E >nul
+    robocopy "%ROOT_DIR%\src\bq_log" "%CORE_DIR%\bq_log" /E >nul
     if errorlevel 8 exit /b 8
 
-    robocopy "%ROOT_DIR%\src\bq_common" "%THIRDPARTY_DIR%\src\bq_common" /E >nul
+    robocopy "%ROOT_DIR%\src\bq_common" "%CORE_DIR%\bq_common" /E >nul
     if errorlevel 8 exit /b 8
 
     copy /Y "%ROOT_DIR%\LICENSE*" "%THIRDPARTY_DIR%\" >nul 2>&1
 
-    if not exist "%THIRDPARTY_DIR%\src\IOS" mkdir "%THIRDPARTY_DIR%\src\IOS" >nul
-    if not exist "%THIRDPARTY_DIR%\src\Mac" mkdir "%THIRDPARTY_DIR%\src\Mac" >nul
+    if not exist "%CORE_DIR%\IOS" mkdir "%CORE_DIR%\IOS" >nul
+    if not exist "%CORE_DIR%\Mac" mkdir "%CORE_DIR%\Mac" >nul
 
-    if exist "%THIRDPARTY_DIR%\src\bq_common\platform\ios_misc.mm" move /Y "%THIRDPARTY_DIR%\src\bq_common\platform\ios_misc.mm" "%THIRDPARTY_DIR%\src\IOS\" >nul
-    if exist "%THIRDPARTY_DIR%\src\bq_common\platform\mac_misc.mm" move /Y "%THIRDPARTY_DIR%\src\bq_common\platform\mac_misc.mm" "%THIRDPARTY_DIR%\src\Mac\" >nul
+    if exist "%CORE_DIR%\bq_common\platform\ios_misc.mm" move /Y "%CORE_DIR%\bq_common\platform\ios_misc.mm" "%CORE_DIR%\IOS\" >nul
+    if exist "%CORE_DIR%\bq_common\platform\mac_misc.mm" move /Y "%CORE_DIR%\bq_common\platform\mac_misc.mm" "%CORE_DIR%\Mac\" >nul
 
     if exist "%PUBLIC_DIR%\BqLog_h_%%T.txt" move /Y "%PUBLIC_DIR%\BqLog_h_%%T.txt" "%PUBLIC_DIR%\BqLog.h" >nul
     pushd "%PUBLIC_DIR%" && del /q /f *.txt >nul 2>&1 & popd

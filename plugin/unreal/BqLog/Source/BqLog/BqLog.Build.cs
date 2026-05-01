@@ -9,18 +9,13 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  */
 using UnrealBuildTool;
-#if UE_5_0_OR_LATER
-using EpicGames.Core;
-#else
-using Tools.DotNETCommon;
-#endif
 using System;
 using System.Collections.Generic;
 using System.IO;
 
 public class BqLog : ModuleRules
 {
-    private readonly HashSet<string> RuntimeDependencyCache = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+    private readonly List<string> RuntimeDependencyCache = new List<string>();
     private const string BqLogMajorVersion = "2";
 
     public BqLog(ReadOnlyTargetRules Target) : base(Target)
@@ -42,23 +37,23 @@ public class BqLog : ModuleRules
     }
 
     /// <summary>
-    /// Source build: BqLog core headers and sources live under ThirdParty/BqLog/{include,src}.
-    /// This path is only present in the source-compile variant (no prebuilt binaries).
+    /// Source build: BqLog core headers live under ThirdParty/BqLog/include (kept in the
+    /// ThirdParty tree for Fab's third-party attribution requirement). The core .cpp
+    /// files are shipped inside Source/BqLog/Private/BqLogCore/ by the packaging scripts
     /// </summary>
     private void ConfigureSourceBuild()
     {
         string thirdParty = Path.Combine(ModuleDirectory, "..", "ThirdParty", "BqLog");
         string includeDir = Path.Combine(thirdParty, "include");
-        string srcDir = Path.Combine(thirdParty, "src");
-
         if (Directory.Exists(includeDir))
         {
             PublicIncludePaths.Add(includeDir);
         }
-        if (Directory.Exists(srcDir))
+
+        string coreSrcDir = Path.Combine(ModuleDirectory, "Private", "BqLogCore");
+        if (Directory.Exists(coreSrcDir))
         {
-            PrivateIncludePaths.Add(srcDir);
-            ConditionalAddModuleDirectory(new DirectoryReference(srcDir));
+            PrivateIncludePaths.Add(coreSrcDir);
         }
     }
 
@@ -79,16 +74,19 @@ public class BqLog : ModuleRules
         }else if (Target.Platform.Equals(UnrealTargetPlatform.Linux))
         {
             ConfigureLinux(thirdPartyRoot, pluginRoot, "x86_64", UnrealTargetPlatform.Linux.ToString());
-        }else if (Target.Platform.Equals(UnrealTargetPlatform
+        }
 #if UE_5_0_OR_LATER
-                      .LinuxArm64
-#else
-                      .LinuxAArch64
-#endif
-                      ))
+        else if (Target.Platform.Equals(UnrealTargetPlatform.LinuxArm64))
         {
             ConfigureLinux(thirdPartyRoot, pluginRoot, "arm64", "LinuxAArch64");
-        }else if (Target.Platform.Equals(UnrealTargetPlatform.Mac))
+        }
+#elif UE_4_24_OR_LATER
+        else if (Target.Platform.Equals(UnrealTargetPlatform.LinuxAArch64))
+        {
+            ConfigureLinux(thirdPartyRoot, pluginRoot, "arm64", "LinuxAArch64");
+        }
+#endif
+        else if (Target.Platform.Equals(UnrealTargetPlatform.Mac))
         {
             ConfigureMac(thirdPartyRoot, pluginRoot);
         }else if (Target.Platform.Equals(UnrealTargetPlatform.IOS))
@@ -181,8 +179,9 @@ public class BqLog : ModuleRules
         if (Directory.Exists(full))
         {
             string normalized = "$(PluginDir)/" + stagedRelative.Replace("\\", "/") + "/**";
-            if (RuntimeDependencyCache.Add(normalized))
+            if (!RuntimeDependencyCache.Contains(normalized))
             {
+                RuntimeDependencyCache.Add(normalized);
                 RuntimeDependencies.Add(normalized);
             }
         }
