@@ -67,7 +67,9 @@ namespace bq {
 #ifdef BQ_UNIT_TEST
         bq::util::set_log_device_console_min_level(bq::log_level::info);
 #endif
+#if !defined(NDEBUG) || defined(BQ_UNIT_TEST)
         bq::util::log_device_console(bq::log_level::info, "Hardware AVX2 support:%s", result ? "true" : "false");
+#endif
 #ifdef BQ_UNIT_TEST
         bq::util::set_log_device_console_min_level(bq::log_level::warning);
 #endif
@@ -120,8 +122,9 @@ namespace bq {
 #ifdef BQ_UNIT_TEST
         bq::util::set_log_device_console_min_level(bq::log_level::info);
 #endif
+#if !defined(NDEBUG) || defined(BQ_UNIT_TEST)
         bq::util::log_device_console(bq::log_level::info, "Hardware CRC32 support:%s", result ? "true" : "false");
-
+#endif
 #ifdef BQ_UNIT_TEST
         bq::util::set_log_device_console_min_level(bq::log_level::warning);
 #endif

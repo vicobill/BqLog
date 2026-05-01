@@ -22,7 +22,9 @@ namespace bq {
         public_worker_.init(log_thread_mode::async, nullptr);
         public_worker_.start();
         phase_ = phase::working;
+#if !defined(NDEBUG)
         bq::util::log_device_console(log_level::info, "log_manager is constructed");
+#endif
     }
 
     log_manager& log_manager::instance()
