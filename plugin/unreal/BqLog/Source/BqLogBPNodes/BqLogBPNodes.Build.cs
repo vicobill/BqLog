@@ -32,9 +32,12 @@ public class BqLogBPNodes : ModuleRules
 				"UnrealEd",
 				"GraphEditor",
 				"Slate", "SlateCore",
-				"EditorStyle", 
-				"ToolMenus"
+				"EditorStyle"
 			});
+
+#if UE_4_24_OR_LATER
+			PrivateDependencyModuleNames.Add("ToolMenus");
+#endif
 		}
 	}
 }
