@@ -375,7 +375,7 @@ namespace bq {
                 while (fcntl(file_handle, F_SETLK, &lock) == -1) {
                     int32_t err = errno;
                     if ((err == EAGAIN || err == EACCES || err == EINTR) && ++retry < max_retry) {
-                        sleep(10);
+                        bq::platform::thread::sleep(3);
                         continue;
                     }
                     bq::util::log_device_console(log_level::error, "add_file_execlusive_check fcntl(F_SETLK) failed, fd:%d, errno:%d", file_handle, err);
