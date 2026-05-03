@@ -405,6 +405,14 @@ namespace bq {
     template <typename T>
     struct is_trivially_destructible : bool_type<___gcc_is_trivially_destructible_helper<T>::value> {
     };
+#elif defined(BQ_CLANG) && (__clang_major__ < 4)
+    template <typename T>
+    struct ___clang_legacy_is_trivially_destructible_helper {
+        static constexpr bool value = __has_trivial_destructor(T);
+    };
+    template <typename T>
+    struct is_trivially_destructible : bool_type<___clang_legacy_is_trivially_destructible_helper<T>::value> {
+    };
 #else
     template <typename T>
     struct is_trivially_destructible : bool_type<__is_trivially_destructible(T)> {
