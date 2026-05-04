@@ -26,7 +26,7 @@ namespace bq {
         // but mutual exclusion within the same process is not explicitly documented to function reliably across different system platforms.
         // To eliminate platform compatibility risks, we decided to implement it ourselves.
         BQ_PACK_BEGIN
-        struct alignas(sizeof(uint64_t)) file_node_info {
+        struct alignas(4) file_node_info {
             uint32_t volumn;
             uint32_t idx_high;
             uint32_t idx_low;
