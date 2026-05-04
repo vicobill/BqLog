@@ -76,26 +76,26 @@ namespace bq {
         "_log_entry_head_def's memory layout must be packed!");
 
     BQ_PACK_BEGIN
-    struct alignas(4) _api_string_def {
+    struct _api_string_def {
         const char* str;
         uint32_t len;
     } BQ_PACK_END static_assert(sizeof(_api_string_def) == sizeof(decltype(_api_string_def::str)) + sizeof(decltype(_api_string_def::len)), "_api_string_def's memory layout must be packed!");
 
     BQ_PACK_BEGIN
-    struct alignas(4) _api_u16string_def {
+    struct _api_u16string_def {
         const char16_t* str;
         uint32_t len;
     } BQ_PACK_END static_assert(sizeof(_api_u16string_def) == sizeof(decltype(_api_u16string_def::str)) + sizeof(decltype(_api_u16string_def::len)), "_api_u16string_def's memory layout must be packed!");
 
     // this is C-linkage version of bq::log_buffer_read_handle
     BQ_PACK_BEGIN
-    struct alignas(4) _api_log_buffer_chunk_read_handle {
+    struct _api_log_buffer_chunk_read_handle {
         uint8_t* format_data_addr;
         enum_buffer_result_code result;
     } BQ_PACK_END static_assert(sizeof(_api_log_buffer_chunk_read_handle) == sizeof(decltype(_api_log_buffer_chunk_read_handle::format_data_addr)) + sizeof(decltype(_api_log_buffer_chunk_read_handle::result)), "_api_log_buffer_chunk_read_handle's memory layout must be packed!");
 
     BQ_PACK_BEGIN
-    struct alignas(4) _api_log_write_handle {
+    struct _api_log_write_handle {
         uint8_t* format_data_addr;
         enum_buffer_result_code result;
     } BQ_PACK_END static_assert(sizeof(_api_log_write_handle) == sizeof(decltype(_api_log_write_handle::format_data_addr)) + sizeof(decltype(_api_log_write_handle::result)), "_api_log_buffer_chunk_write_handle's memory layout must be packed!");

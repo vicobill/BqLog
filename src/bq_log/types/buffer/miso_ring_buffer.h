@@ -93,7 +93,7 @@ namespace bq {
 
         // frequently modified by read thread, so don't access it in write thread too often.
         BQ_PACK_BEGIN
-        struct alignas(4) head {
+        struct alignas(BQ_CACHE_LINE_SIZE) head {
             // it is a snapshot of last read cursor when recovering from memory map file .
             uint32_t read_cursor_cache_;
             uint32_t read_cursor_start_cache_;
