@@ -28,11 +28,12 @@ namespace bq {
         // To eliminate platform compatibility risks, we decided to implement it ourselves.
         BQ_PACK_BEGIN
         struct alignas(sizeof(uint64_t)) file_node_info {
+            decltype(bq::declval<struct stat>().st_dev) dev;
             decltype(bq::declval<struct stat>().st_ino) ino;
             uint64_t hash_code() const;
             bool operator==(const file_node_info& rhs) const
             {
-                return ino == rhs.ino;
+                return dev == rhs.dev && ino == rhs.ino;
             }
         } BQ_PACK_END
     }
