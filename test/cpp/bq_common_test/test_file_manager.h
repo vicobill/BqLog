@@ -163,15 +163,17 @@ namespace bq {
                     result.add_result(mmp_handle_tar.has_been_mapped(), "open memory map file");
                     result.add_result(mmp_handle_tar.get_error_code() == 0, "open memory map file error code");
 
-                    bool check_result = true;
-                    for (size_t i = 0; i < memory_map_file_size; ++i) {
-                        if (((uint8_t*)mmp_handle_tar.get_mapped_data())[i] != (uint8_t)(i % 255)) {
-                            check_result = false;
+                    if (mmp_handle_tar.has_been_mapped()) {
+                        bool check_result = true;
+                        for (size_t i = 0; i < memory_map_file_size; ++i) {
+                            if (((uint8_t*)mmp_handle_tar.get_mapped_data())[i] != (uint8_t)(i % 255)) {
+                                check_result = false;
+                            }
                         }
+                        result.add_result(check_result, "memory map check result");
+                        memory_map::flush_memory_map(mmp_handle_tar);
+                        memory_map::release_memory_map(mmp_handle_tar);
                     }
-                    result.add_result(check_result, "memory map check result");
-                    memory_map::flush_memory_map(mmp_handle_tar);
-                    memory_map::release_memory_map(mmp_handle_tar);
                     file_manager.close_file(mmf_handle_tar);
                 }
 
