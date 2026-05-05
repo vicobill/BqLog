@@ -355,7 +355,10 @@ namespace bq {
 
         uint64_t file_node_info::hash_code() const
         {
-            return bq::util::get_hash_64(this, sizeof(file_node_info));
+            uint8_t buf[sizeof(dev) + sizeof(ino)];
+            memcpy(buf, &dev, sizeof(dev));
+            memcpy(buf + sizeof(dev), &ino, sizeof(ino));
+            return bq::util::get_hash_64(buf, sizeof(buf));
         }
 
         static bool add_file_execlusive_check(const platform_file_handle& file_handle, file_open_mode_enum mode)
