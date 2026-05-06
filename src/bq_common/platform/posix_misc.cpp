@@ -355,7 +355,10 @@ namespace bq {
 
         uint64_t file_node_info::hash_code() const
         {
-            return bq::util::get_hash_64(this, sizeof(file_node_info));
+            uint8_t buf[sizeof(dev) + sizeof(ino)];
+            memcpy(buf, &dev, sizeof(dev));
+            memcpy(buf + sizeof(dev), &ino, sizeof(ino));
+            return bq::util::get_hash_64(buf, sizeof(buf));
         }
 
         static bool add_file_execlusive_check(const platform_file_handle& file_handle, file_open_mode_enum mode)
@@ -370,7 +373,15 @@ namespace bq {
                 lock.l_whence = SEEK_SET;
                 lock.l_start = 0;
                 lock.l_len = 0;
-                if (fcntl(file_handle, F_SETLK, &lock) == -1) {
+                constexpr int32_t max_retry = 5;
+                int32_t retry = 0;
+                while (fcntl(file_handle, F_SETLK, &lock) == -1) {
+                    int32_t err = errno;
+                    if ((err == EAGAIN || err == EACCES || err == EINTR) && ++retry < max_retry) {
+                        bq::platform::thread::sleep(3);
+                        continue;
+                    }
+                    bq::util::log_device_console(log_level::error, "add_file_execlusive_check fcntl(F_SETLK) failed, fd:%d, errno:%d", file_handle, err);
                     return false;
                 }
             }
@@ -382,6 +393,7 @@ namespace bq {
             auto& file_exclusive_cache = common_global_vars::get().file_exclusive_cache_;
             bq::platform::scoped_mutex lock(common_global_vars::get().file_exclusive_mutex_);
             file_node_info node_info;
+            node_info.dev = file_info.st_dev;
             node_info.ino = file_info.st_ino;
             auto iter = file_exclusive_cache.find(node_info);
             if (iter == file_exclusive_cache.end()) {
@@ -404,6 +416,7 @@ namespace bq {
             auto& file_exclusive_cache = common_global_vars::get().file_exclusive_cache_;
             bq::platform::scoped_mutex lock(common_global_vars::get().file_exclusive_mutex_);
             file_node_info node_info;
+            node_info.dev = file_info.st_dev;
             node_info.ino = file_info.st_ino;
             file_exclusive_cache.erase(node_info);
         }
