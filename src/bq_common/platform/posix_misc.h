@@ -32,9 +32,9 @@ namespace bq {
             uint64_t hash_code() const;
             bool operator==(const file_node_info& rhs) const
             {
-                return ino == rhs.ino;
+                return dev == rhs.dev && ino == rhs.ino;
             }
-        } BQ_PACK_END
+        };
     }
 }
 #endif
