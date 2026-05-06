@@ -52,13 +52,17 @@ public:
 #endif
 	;
 	
-	virtual void RemoveInputPin(class UEdGraphPin* Pin) 
+	virtual void RemoveInputPin(class UEdGraphPin* Pin)
 #if ENGINE_MAJOR_VERSION >= 5
 	override
 #endif
 	;
-	
+
+#if ENGINE_MAJOR_VERSION >= 5 || (ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION >= 24)
 	virtual void GetNodeContextMenuActions(class UToolMenu* Menu, class UGraphNodeContextMenuContext* Context) const override;
+#else
+	virtual void GetContextMenuActions(const struct FGraphNodeContextMenuBuilder& Context) const override;
+#endif
 	
 	virtual bool SupportsAddPin() const { return true; }
 	virtual bool SupportsRemovePin() const { return true; }
@@ -98,6 +102,16 @@ private:
 	void GetArgPins(TArray<UEdGraphPin*>& OutPins) const;
 	static FName GetArgNameFromPin(const UEdGraphPin* Pin);
 	FName GetUniqueArgumentName() const;
+
+	struct FBqLogMenuItem
+	{
+		FName Id;
+		FText Label;
+		FText Tooltip;
+		TFunction<void()> Action;
+	};
+
+	void CollectBqLogMenuItems(TArray<FBqLogMenuItem>& OutItems) const;
 
 private:
 	UPROPERTY()

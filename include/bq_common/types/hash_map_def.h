@@ -27,6 +27,10 @@
 namespace bq {
     template <typename K, typename V, typename Allocator>
     class BQ_HASH_MAP_CLS_NAME;
+    template <typename K, typename V, typename Allocator, bool C>
+    class BQ_HASH_MAP_ITER_CLS_NAME;
+    template <typename K, typename V>
+    struct BQ_HASH_MAP_KV_CLS_NAME;
 
     template <typename K, typename V>
     struct BQ_HASH_MAP_KV_CLS_NAME {

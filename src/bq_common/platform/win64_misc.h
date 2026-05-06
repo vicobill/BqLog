@@ -25,8 +25,7 @@ namespace bq {
         // File exclusive works well across different processes,
         // but mutual exclusion within the same process is not explicitly documented to function reliably across different system platforms.
         // To eliminate platform compatibility risks, we decided to implement it ourselves.
-        BQ_PACK_BEGIN
-        struct alignas(4) file_node_info {
+        struct file_node_info {
             uint32_t volumn;
             uint32_t idx_high;
             uint32_t idx_low;
@@ -35,9 +34,9 @@ namespace bq {
             {
                 return volumn == rhs.volumn && idx_high == rhs.idx_high && idx_low == rhs.idx_low;
             }
-        } BQ_PACK_END
+        };
 
-            struct windows_version_info {
+        struct windows_version_info {
             uint32_t major_version = 0;
             uint32_t minor_version = 0;
             uint32_t build_number = 0;

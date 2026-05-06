@@ -22,7 +22,7 @@ namespace bq {
         : mutex(true)
     {
         seq_generator = 0;
-#if !defined(BQ_UNIT_TEST) && !defined(BQ_TOOLS)
+#if !defined(NDEBUG)
         bq::util::log_device_console(log_level::info, "file_manager is constructed");
         bq::util::log_device_console(log_level::info, "base dir type 0: %s", get_base_dir(0).c_str());
         bq::util::log_device_console(log_level::info, "base dir type 1: %s", get_base_dir(1).c_str());

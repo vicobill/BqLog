@@ -36,21 +36,27 @@ for ue_version in "${UE_VERSIONS[@]}"; do
   mkdir -p "$PUBLIC_DIR" "$PRIVATE_DIR"
   rm -rf "$TARGET_DIR/Binaries"
 
-  # BqLog core library → ThirdParty directory (third-party declaration for Fab)
+  # BqLog core: headers go under Source/ThirdParty/BqLog/include
+  # (kept in the ThirdParty tree for Fab's third-party attribution requirement;
+  # LICENSE also lives here). The .cpp implementation tree is copied into
+  # Source/BqLog/Private/BqLogCore/ so it falls under UBT's standard module
+  # source scan — no ConditionalAddModuleDirectory (4.26+ only) needed, which
+  # keeps the plugin buildable on UE 4.22 through UE 5.x with one Build.cs.
   THIRDPARTY_DIR="$TARGET_DIR/Source/ThirdParty/BqLog"
+  CORE_DIR="$PRIVATE_DIR/BqLogCore"
   mkdir -p "$THIRDPARTY_DIR/include"
-  mkdir -p "$THIRDPARTY_DIR/src"
+  mkdir -p "$CORE_DIR"
   cp -R "$ROOT_DIR/include/." "$THIRDPARTY_DIR/include/"
-  cp -R "$ROOT_DIR/src/bq_log" "$THIRDPARTY_DIR/src/"
-  cp -R "$ROOT_DIR/src/bq_common" "$THIRDPARTY_DIR/src/"
+  cp -R "$ROOT_DIR/src/bq_log" "$CORE_DIR/"
+  cp -R "$ROOT_DIR/src/bq_common" "$CORE_DIR/"
   cp "$ROOT_DIR/LICENSE"* "$THIRDPARTY_DIR/"
 
-  mkdir -p "$THIRDPARTY_DIR/src/IOS" "$THIRDPARTY_DIR/src/Mac"
-  if [[ -f "$THIRDPARTY_DIR/src/bq_common/platform/ios_misc.mm" ]]; then
-    mv -f "$THIRDPARTY_DIR/src/bq_common/platform/ios_misc.mm" "$THIRDPARTY_DIR/src/IOS/"
+  mkdir -p "$CORE_DIR/IOS" "$CORE_DIR/Mac"
+  if [[ -f "$CORE_DIR/bq_common/platform/ios_misc.mm" ]]; then
+    mv -f "$CORE_DIR/bq_common/platform/ios_misc.mm" "$CORE_DIR/IOS/"
   fi
-  if [[ -f "$THIRDPARTY_DIR/src/bq_common/platform/mac_misc.mm" ]]; then
-    mv -f "$THIRDPARTY_DIR/src/bq_common/platform/mac_misc.mm" "$THIRDPARTY_DIR/src/Mac/"
+  if [[ -f "$CORE_DIR/bq_common/platform/mac_misc.mm" ]]; then
+    mv -f "$CORE_DIR/bq_common/platform/mac_misc.mm" "$CORE_DIR/Mac/"
   fi
 
   if [[ -f "$PUBLIC_DIR/BqLog_h_${ue_version}.txt" ]]; then
@@ -68,9 +74,10 @@ for ue_version in "${UE_VERSIONS[@]}"; do
   sed -i '' "s/\"VersionName\": \"1.0\"/\"VersionName\": \"$VERSION\"/" "$TARGET_DIR/BqLog.uplugin"
   # Replace EngineVersion based on UE major version
   if [[ "$ue_version" == "ue4" ]]; then
-    sed -i '' "s/\"EngineVersion\": \"0.0\"/\"EngineVersion\": \"4.27\"/" "$TARGET_DIR/BqLog.uplugin"
-  else
-    sed -i '' "s/\"EngineVersion\": \"0.0\"/\"EngineVersion\": \"5.7\"/" "$TARGET_DIR/BqLog.uplugin"
+    sed -i '' "s/\"EngineVersion\": \"5.7\"/\"EngineVersion\": \"4.27\"/" "$TARGET_DIR/BqLog.uplugin"
+    sed -i '' 's/"PlatformAllowList"/"WhitelistPlatforms"/g' "$TARGET_DIR/BqLog.uplugin"
+    sed -i '' 's/"PlatformDenyList"/"BlacklistPlatforms"/g' "$TARGET_DIR/BqLog.uplugin"
+    sed -i '' 's/"LinuxArm64"/"LinuxAArch64"/g' "$TARGET_DIR/BqLog.uplugin"
   fi
 
   # Remove .gitkeep files before zipping

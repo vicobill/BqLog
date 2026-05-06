@@ -31,13 +31,17 @@ namespace bq {
         {
             bq::platform::scoped_spin_lock lock(lock_);
             base_dir_0_ = dir;
+#if !defined(NDEBUG)
             bq::util::log_device_console(log_level::info, "set base dir type 0: %s", dir.c_str());
+#endif
         }
         void base_dir_initializer::set_base_dir_1(const bq::string& dir)
         {
             bq::platform::scoped_spin_lock lock(lock_);
             base_dir_1_ = dir;
+#if !defined(NDEBUG)
             bq::util::log_device_console(log_level::info, "set base dir type 1: %s", dir.c_str());
+#endif
         }
     }
 }

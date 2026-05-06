@@ -2,13 +2,13 @@
   <img src="banner.jpg" alt="BqLog Banner" width="100%">
 </p>
 
-# BqLog (扁鹊日志) V 2.2.8
+# BqLog (扁鹊日志) V 2.2.9
 
 [English](./README.md) | **简体中文**
 
 [![license](https://img.shields.io/badge/license-APACHE2.0-brightgreen.svg?style=flat)](LICENSE.txt)
-[![Release Version](https://img.shields.io/badge/release-2.2.8-red.svg)](https://github.com/Tencent/BqLog/releases)
-[![ChangeLog](https://img.shields.io/badge/📋_更新日志-v2.2.8-orange.svg?style=flat)](CHANGELOG.md)
+[![Release Version](https://img.shields.io/badge/release-2.2.9-red.svg)](https://github.com/Tencent/BqLog/releases)
+[![ChangeLog](https://img.shields.io/badge/📋_更新日志-v2.2.9-orange.svg?style=flat)](CHANGELOG.md)
 [![GitHub Stars](https://img.shields.io/github/stars/Tencent/BqLog?style=flat&logo=github)](https://github.com/Tencent/BqLog/stargazers)
 [![GitHub Forks](https://img.shields.io/github/forks/Tencent/BqLog?style=flat&logo=github)](https://github.com/Tencent/BqLog/network/members)
 [![GitHub Issues](https://img.shields.io/github/issues/Tencent/BqLog?style=flat&logo=github)](https://github.com/Tencent/BqLog/issues)
@@ -22,12 +22,12 @@
 
 ---
 
-[![Download](https://img.shields.io/badge/⬇_下载-Release_2.2.8-blue.svg?style=for-the-badge)](https://github.com/Tencent/BqLog/releases/tag/Release_2.2.8)
+[![Download](https://img.shields.io/badge/⬇_下载-Release_2.2.9-blue.svg?style=for-the-badge)](https://github.com/Tencent/BqLog/releases/tag/Release_2.2.9)
 
-## 📋 v2.2.8 更新亮点
+## 📋 v2.2.9 更新亮点
 
-- **代码质量优化** — 重构所有 SFINAE 写法：将 `enable_if` 从返回值类型移至模板参数，提升可读性与一致性。
-- **Bug 修复** — 修复 C++ 开启堆栈追踪时的崩溃问题。（[#62](https://github.com/Tencent/BqLog/issues/62)）
+- **兼容性优化** — 改进对早期 Clang 工具链以及 MFC 等框架的代码兼容性。
+- **兼容性优化** — 完善对 Unreal Engine 各版本的代码兼容性。
 
 > 完整更新日志 → [CHANGELOG.md](CHANGELOG.md)
 

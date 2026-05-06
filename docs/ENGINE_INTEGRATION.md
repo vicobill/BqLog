@@ -37,7 +37,19 @@ For more examples, refer to `/demo/csharp` directory in the repository.
 
 ## Unreal Engine
 
-Supports both UE4 and UE5. Pick any one of the following ways to integrate.
+Pick any one of the following ways to integrate.
+
+### Supported engine versions
+
+| Install method | Supported Unreal Engine versions |
+|---|---|
+| **Fab** | UE 4.22 – 4.27 and UE 5.0 – 5.7 (one dedicated zip per minor version, covering every supported version) |
+| **Prebuilt (GitHub Release)** | UE 4.25 – 4.27 (`ue4` zip) and UE 5.0 – 5.7 (`ue5` zip) |
+| **Source (GitHub Release)** | UE 4.25 – 4.27 (`ue4` zip) and UE 5.0 – 5.7 (`ue5` zip) |
+
+> **On UE 4.22 / 4.23 / 4.24?** Install through [Fab](https://www.fab.com/listings/386d1c78-e164-4e97-8b3e-e88cbf9b6acf) — the per-engine-version Fab zips account for `.uplugin` token differences in those older UE4 minors (older UBT revisions don't recognize `UncookedOnly` or `LinuxAArch64`). The single GitHub `ue4` zip targets UE 4.25+.
+>
+> **Mac / iOS on UE 4.22 and 4.23:** Due to Fab build-machine limitations, the Fab zips for UE 4.22 and 4.23 do **not** include Mac or iOS binaries. If you need Mac or iOS support on these two engine versions, please download the **Source** or **Prebuilt** package from the [GitHub Releases page](https://github.com/Tencent/BqLog/releases) and integrate it manually.
 
 ### Integration
 
@@ -47,11 +59,11 @@ Supports both UE4 and UE5. Pick any one of the following ways to integrate.
   - Recommended when you want the easiest installation and automatic updates through Fab.
 
 - **Prebuilt**
-  - Download `unreal_plugin_prebuilt_ue4_{version}` or `unreal_plugin_prebuilt_ue5_{version}` (depending on your engine version) from the [Releases page](https://github.com/Tencent/BqLog/releases);
+  - Download `unreal_plugin_prebuilt_ue4_{version}` (for UE 4.25 – 4.27) or `unreal_plugin_prebuilt_ue5_{version}` (for UE 5.0 – 5.7) from the [Releases page](https://github.com/Tencent/BqLog/releases);
   - Unzip to the `Plugins` directory of your game project.
 
 - **Source**
-  - Download `unreal_plugin_sources_ue4_{version}` or `unreal_plugin_sources_ue5_{version}` (depending on your engine version) from the [Releases page](https://github.com/Tencent/BqLog/releases);
+  - Download `unreal_plugin_sources_ue4_{version}` (for UE 4.25 – 4.27) or `unreal_plugin_sources_ue5_{version}` (for UE 5.0 – 5.7) from the [Releases page](https://github.com/Tencent/BqLog/releases);
   - Unzip to the `Plugins` directory of your game project, to be recompiled by the engine.
 
 ### Enabling the Plugin

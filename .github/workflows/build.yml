@@ -6270,13 +6270,93 @@ jobs:
         run: |
           set -euo pipefail
           DIST="${{ github.workspace }}/dist"
+          # Generic UE4/UE5 zip: root is BqLog/ (what users get from GitHub Release).
+          # The .uplugin EngineVersion stays as the two-segment "4.27" / "5.7" set by
+          # linux_build_all_and_pack.sh — two-segment values fail FEngineVersion::Parse,
+          # which makes FPluginManager::IsPluginCompatible short-circuit to true, so the
+          # plugin loads cleanly on any 4.22~4.27 / 5.0~5.7 without the "load anyway?" dialog.
           for ue in ue4 ue5; do
-            # GitHub download: root is BqLog/
             mkdir -p "$DIST/$ue"
             (cd "$DIST/$ue" && unzip -q "$DIST/bqlog-unreal-plugin-${VERSION}-${ue}.zip")
-            # Fab download: root is plugin contents directly (no BqLog/ wrapper)
-            mkdir -p "$DIST/fab_${ue}"
-            cp -R "$DIST/$ue/BqLog/." "$DIST/fab_${ue}/"
+          done
+
+          # Fab zips: one zip per supported engine minor version.
+          # Each zip ships with .uplugin rewritten so:
+          #   - EngineVersion is the three-segment "X.Y.0" matching that Fab Project Version
+          #     (Fab's review pipeline validates this field per listing).
+          #   - UE4 targets use the legacy WhitelistPlatforms/BlacklistPlatforms keys
+          #     (UE 4.27 and earlier ModuleDescriptor.cpp only reads those).
+          #   - UE5 targets use PlatformAllowList/PlatformDenyList
+          #     (UE 5.x ModuleDescriptor.cpp reads those first; legacy names remain as fallback).
+          #   - Linux arm64 platform string differs: UE4 uses "LinuxAArch64", UE5 uses "LinuxArm64".
+          rewrite_uplugin_for_fab() {
+            local plugin_dir="$1"        # directory containing BqLog.uplugin
+            local ue_major="$2"          # 4 or 5
+            local ue_minor="$3"          # 22, 23, ... 27 or 0, 1, ... 7
+            local uplugin="$plugin_dir/BqLog.uplugin"
+
+            # Set EngineVersion to "X.Y"
+            sed -i -E \
+              "s/\"EngineVersion\"[[:space:]]*:[[:space:]]*\"[^\"]*\"/\"EngineVersion\": \"${ue_major}.${ue_minor}\"/" \
+              "$uplugin"
+
+            if [[ "$ue_major" == "4" ]]; then
+              # UE4 ModuleDescriptor.cpp only recognizes the legacy key names.
+              sed -i 's/"PlatformAllowList"/"WhitelistPlatforms"/g' "$uplugin"
+              sed -i 's/"PlatformDenyList"/"BlacklistPlatforms"/g' "$uplugin"
+              # UE4 Linux arm64 target is spelled LinuxAArch64 (added in 4.25).
+              sed -i 's/"LinuxArm64"/"LinuxAArch64"/g' "$uplugin"
+
+              # UE 4.22~4.24 predate several tokens we use by default:
+              #   - ModuleHostType.UncookedOnly was introduced in 4.24.
+              #     4.22/4.23 reject it with "Missing or invalid 'Type' field"
+              #     (Enum.TryParse<ModuleHostType> fails). Fall back to Editor,
+              #     which is the closest pre-4.24 equivalent for BqLogBPNodes
+              #     (blueprint-graph helpers that only load inside the editor).
+              #   - UnrealTargetPlatform.LinuxAArch64 was introduced in 4.25.
+              #     4.22/4.23/4.24 reject the platform name with
+              #     "The platform name LinuxAArch64 is not a valid platform name".
+              if (( ue_minor < 24 )); then
+                # 4.22, 4.23: strip UncookedOnly entirely.
+                sed -i 's/"UncookedOnly"/"Editor"/g' "$uplugin"
+              fi
+              if (( ue_minor < 25 )); then
+                # 4.22, 4.23, 4.24: remove LinuxAArch64 (with surrounding comma
+                # and optional whitespace) from platform arrays.
+                #   ", \"LinuxAArch64\"" → ""   (middle or tail element)
+                #   "\"LinuxAArch64\", "  → ""  (leading element)
+                #   "\"LinuxAArch64\""    → ""  (sole element, fallback)
+                sed -i -E \
+                  -e 's/,[[:space:]]*"LinuxAArch64"//g' \
+                  -e 's/"LinuxAArch64"[[:space:]]*,[[:space:]]*//g' \
+                  -e 's/"LinuxAArch64"//g' \
+                  "$uplugin"
+              fi
+            fi
+          }
+
+          build_fab_zip() {
+            local ue_variant="$1"        # ue4 or ue5
+            local ue_major="$2"
+            local ue_minor="$3"
+            local src_dir="$DIST/$ue_variant/BqLog"
+            local stage_dir="$DIST/fab_stage_ue_${ue_major}_${ue_minor}"
+            local out_dir="$DIST/fab_ue_${ue_major}_${ue_minor}"
+
+            rm -rf "$stage_dir" "$out_dir"
+            mkdir -p "$stage_dir" "$out_dir"
+
+            # Fab zip layout: plugin contents at zip root (no BqLog/ wrapper).
+            cp -R "$src_dir/." "$stage_dir/"
+            rewrite_uplugin_for_fab "$stage_dir" "$ue_major" "$ue_minor"
+            cp -R "$stage_dir/." "$out_dir/"
+          }
+
+          for minor in 22 23 24 25 26 27; do
+            build_fab_zip ue4 4 "$minor"
+          done
+          for minor in 0 1 2 3 4 5 6 7; do
+            build_fab_zip ue5 5 "$minor"
           done
 
       - name: Upload UE4 Source Artifact
@@ -6291,17 +6371,132 @@ jobs:
           name: unreal_plugin_sources_ue5_${{ needs.extract_version.outputs.version }}
           path: ${{ github.workspace }}/dist/ue5
 
-      - name: Upload UE4 Fab Source Artifact
+      - name: Upload UE4 Fab Source Artifacts (4.22~4.27)
         uses: actions/upload-artifact@v6
         with:
-          name: _dont_download_this_only_for_fab_ue4_${{ needs.extract_version.outputs.version }}
-          path: ${{ github.workspace }}/dist/fab_ue4
+          name: _dont_download_this_only_for_fab_ue_4_22_${{ needs.extract_version.outputs.version }}
+          path: ${{ github.workspace }}/dist/fab_ue_4_22
 
-      - name: Upload UE5 Fab Source Artifact
+      - uses: actions/upload-artifact@v6
+        with:
+          name: _dont_download_this_only_for_fab_ue_4_23_${{ needs.extract_version.outputs.version }}
+          path: ${{ github.workspace }}/dist/fab_ue_4_23
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: _dont_download_this_only_for_fab_ue_4_24_${{ needs.extract_version.outputs.version }}
+          path: ${{ github.workspace }}/dist/fab_ue_4_24
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: _dont_download_this_only_for_fab_ue_4_25_${{ needs.extract_version.outputs.version }}
+          path: ${{ github.workspace }}/dist/fab_ue_4_25
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: _dont_download_this_only_for_fab_ue_4_26_${{ needs.extract_version.outputs.version }}
+          path: ${{ github.workspace }}/dist/fab_ue_4_26
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: _dont_download_this_only_for_fab_ue_4_27_${{ needs.extract_version.outputs.version }}
+          path: ${{ github.workspace }}/dist/fab_ue_4_27
+
+      - name: Upload UE5 Fab Source Artifacts (5.0~5.7)
         uses: actions/upload-artifact@v6
         with:
-          name: _dont_download_this_only_for_fab_ue5_${{ needs.extract_version.outputs.version }}
-          path: ${{ github.workspace }}/dist/fab_ue5
+          name: _dont_download_this_only_for_fab_ue_5_0_${{ needs.extract_version.outputs.version }}
+          path: ${{ github.workspace }}/dist/fab_ue_5_0
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: _dont_download_this_only_for_fab_ue_5_1_${{ needs.extract_version.outputs.version }}
+          path: ${{ github.workspace }}/dist/fab_ue_5_1
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: _dont_download_this_only_for_fab_ue_5_2_${{ needs.extract_version.outputs.version }}
+          path: ${{ github.workspace }}/dist/fab_ue_5_2
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: _dont_download_this_only_for_fab_ue_5_3_${{ needs.extract_version.outputs.version }}
+          path: ${{ github.workspace }}/dist/fab_ue_5_3
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: _dont_download_this_only_for_fab_ue_5_4_${{ needs.extract_version.outputs.version }}
+          path: ${{ github.workspace }}/dist/fab_ue_5_4
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: _dont_download_this_only_for_fab_ue_5_5_${{ needs.extract_version.outputs.version }}
+          path: ${{ github.workspace }}/dist/fab_ue_5_5
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: _dont_download_this_only_for_fab_ue_5_6_${{ needs.extract_version.outputs.version }}
+          path: ${{ github.workspace }}/dist/fab_ue_5_6
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: _dont_download_this_only_for_fab_ue_5_7_${{ needs.extract_version.outputs.version }}
+          path: ${{ github.workspace }}/dist/fab_ue_5_7
+
+  # ── Temporary: publish ONLY the 14 Fab source zips to pippocao/BqLogFabRelease.
+  # Used to smoke-test the Fab release pipeline without waiting for the full CI
+  # (prebuilt job, Python/Java/Node publishing, etc.) to finish. Runs only on
+  # manual dispatch (github.event_name == 'workflow_dispatch') so that
+  # release.yml — which also publishes to BqLogFabRelease — never fires this.
+  # Remove this job once the Fab flow is verified end to end.
+#  fab_sources_only_release:
+#    runs-on: ubuntu-latest
+#    if: ${{ github.event_name == 'workflow_dispatch' }}
+#    needs:
+#      - extract_version
+#      - unreal_plugin_build_on_linux
+#    steps:
+#      - name: Download Fab source artifacts
+#        uses: actions/download-artifact@v8
+#        with:
+#          pattern: _dont_download_this_only_for_fab_ue_*_${{ needs.extract_version.outputs.version }}
+#          path: downloaded_fab_sources/
+#
+#      - name: Pack each Fab artifact into its own zip
+#        shell: bash
+#        run: |
+#          set -euo pipefail
+#          mkdir -p fab_release_assets
+#          for artifact_dir in downloaded_fab_sources/*/; do
+#            name="$(basename "$artifact_dir")"
+#            (cd "$artifact_dir" && zip -qry "$OLDPWD/fab_release_assets/${name}.zip" .)
+#          done
+#          echo "=== Fab release assets ==="
+#          ls -l fab_release_assets/
+#
+#      - name: Publish test release to pippocao/BqLogFabRelease
+#        uses: softprops/action-gh-release@v3
+#        with:
+#          # Pass the cross-repo PAT via the `token` input, not env.GITHUB_TOKEN.
+#          # softprops/action-gh-release@v3's `token` input defaults to
+#          # `${{ github.token }}` and that default silently wins over any
+#          # GITHUB_TOKEN env var — using env alone causes 403 "Resource not
+#          # accessible by integration" because github.token can't write to
+#          # another repo.
+#          token: ${{ secrets.FAB_RELEASE_TOKEN }}
+#          repository: pippocao/BqLogFabRelease
+#          # Suffix with run_id so repeated smoke-test runs never collide on tag.
+#          tag_name: Test_Release_${{ needs.extract_version.outputs.version }}_${{ github.run_id }}
+#          name: Test Release ${{ needs.extract_version.outputs.version }} (Fab sources only, run ${{ github.run_id }})
+#          body: |
+#            Temporary smoke-test release of the 14 per-engine-version Fab source zips.
+#            Created by the `fab_sources_only_release` job in build.yml for BqLog
+#            ${{ needs.extract_version.outputs.version }}.
+#
+#            Not for general consumption — delete once Fab review is verified.
+#          draft: false
+#          prerelease: true
+#          files: fab_release_assets/*
 
   unreal_plugin_build_on_win64:
     runs-on: windows-latest
@@ -6565,9 +6760,10 @@ jobs:
             sed -i "s/\"Version\": 1/\"Version\": $VERSION_INT/" "$plugin_dir/BqLog.uplugin"
             sed -i "s/\"VersionName\": \"1.0\"/\"VersionName\": \"$VERSION\"/" "$plugin_dir/BqLog.uplugin"
             if [[ "$ue" == "ue4" ]]; then
-              sed -i "s/\"EngineVersion\": \"0.0\"/\"EngineVersion\": \"4.27\"/" "$plugin_dir/BqLog.uplugin"
-            else
-              sed -i "s/\"EngineVersion\": \"0.0\"/\"EngineVersion\": \"5.7\"/" "$plugin_dir/BqLog.uplugin"
+              sed -i "s/\"EngineVersion\": \"5.7\"/\"EngineVersion\": \"4.27\"/" "$plugin_dir/BqLog.uplugin"
+              sed -i 's/"PlatformAllowList"/"WhitelistPlatforms"/g' "$plugin_dir/BqLog.uplugin"
+              sed -i 's/"PlatformDenyList"/"BlacklistPlatforms"/g' "$plugin_dir/BqLog.uplugin"
+              sed -i 's/"LinuxArm64"/"LinuxAArch64"/g' "$plugin_dir/BqLog.uplugin"
             fi
 
             rm -rf "$plugin_dir/Binaries/Win64" "$plugin_dir/Binaries/Win64Arm64" "$plugin_dir/Binaries/Linux" "$plugin_dir/Binaries/LinuxAArch64" "$plugin_dir/Binaries/Mac" "$plugin_dir/Binaries/IOS"
@@ -6617,6 +6813,12 @@ jobs:
         run: |
           set -euo pipefail
           DIST="${{ github.workspace }}/dist"
+
+          # Generic UE4/UE5 prebuilt zip (for GitHub Release). EngineVersion is
+          # the two-segment value "4.27"/"5.7" baked in by the Stage step — that
+          # fails FEngineVersion::Parse, which makes IsPluginCompatible bail out
+          # to true, so the plugin loads without a "load anyway?" dialog on any
+          # supported engine version.
           for ue in ue4 ue5; do
             mkdir -p "$DIST/$ue"
             (cd "$DIST/$ue" && unzip -q "$DIST/bqlog-unreal-plugin-prebuilt-${VERSION}-${ue}.zip")

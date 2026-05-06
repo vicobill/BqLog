@@ -15,7 +15,7 @@
 #include <time.h>
 #include "bq_common/bq_common.h"
 
-#if defined(CLOCK_MONOTONIC) && !defined(BQ_APPLE)
+#if defined(CLOCK_MONOTONIC) && !defined(BQ_APPLE) && !(defined(BQ_ANDROID) && defined(BQ_ARM_32))
 #define BQ_POSIX_MONOTONIC_SUPPORTED 1
 #endif
 

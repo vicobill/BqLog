@@ -728,7 +728,11 @@ namespace bq {
 
         uint64_t file_node_info::hash_code() const
         {
-            return bq::util::get_hash_64(this, sizeof(file_node_info));
+            uint8_t buf[sizeof(volumn) + sizeof(idx_high) + sizeof(idx_low)];
+            memcpy(buf, &volumn, sizeof(volumn));
+            memcpy(buf + sizeof(volumn), &idx_high, sizeof(idx_high));
+            memcpy(buf + sizeof(volumn) + sizeof(idx_high), &idx_low, sizeof(idx_low));
+            return bq::util::get_hash_64(buf, sizeof(buf));
         }
 
         static windows_version_info win_version_info_;

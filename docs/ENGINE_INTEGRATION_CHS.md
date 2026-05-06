@@ -37,7 +37,19 @@ log.info("Hello from Unity! value:{}", 42);
 
 ## Unreal Engine
 
-同时支持 UE4 与 UE5。可任选以下一种方式集成。
+可任选以下一种方式集成。
+
+### 支持的引擎版本
+
+| 安装方式 | 支持的 Unreal Engine 版本 |
+|---|---|
+| **Fab** | UE 4.22 – 4.27 以及 UE 5.0 – 5.7（全版本支持，每个次版本都提供专用 zip） |
+| **预编译版（GitHub Release）** | UE 4.25 – 4.27（`ue4` 包）与 UE 5.0 – 5.7（`ue5` 包） |
+| **源码版（GitHub Release）** | UE 4.25 – 4.27（`ue4` 包）与 UE 5.0 – 5.7（`ue5` 包） |
+
+> **使用 UE 4.22 / 4.23 / 4.24？** 请通过 [Fab](https://www.fab.com/listings/386d1c78-e164-4e97-8b3e-e88cbf9b6acf) 安装——Fab 上每个引擎次版本的专用 zip 针对这些老 UE4 的 `.uplugin` 语法差异做了适配（旧版 UBT 不识别 `UncookedOnly` 或 `LinuxAArch64` 等标识符）。GitHub Release 上的通用 `ue4` 包只针对 UE 4.25+。
+>
+> **UE 4.22 与 4.23 的 Mac / iOS 支持：** 由于 Fab 构建机的限制，Fab 上针对 UE 4.22 与 4.23 的 zip **未包含** Mac 与 iOS 版本。如果在这两个引擎版本下需要 Mac 或 iOS 支持，请前往 [GitHub Releases 页面](https://github.com/Tencent/BqLog/releases) 下载 **源码版** 或 **预编译版** 手动引入。
 
 ### 集成方式
 
@@ -47,11 +59,11 @@ log.info("Hello from Unity! value:{}", 42);
   - 适合希望以最简方式安装并通过 Fab 自动获取更新的用户。
 
 - **预编译版（Prebuilt）**
-  - 从 [Releases 页面](https://github.com/Tencent/BqLog/releases)根据引擎版本下载 `unreal_plugin_prebuilt_ue4_{version}` 或 `unreal_plugin_prebuilt_ue5_{version}`；
+  - 从 [Releases 页面](https://github.com/Tencent/BqLog/releases) 下载 `unreal_plugin_prebuilt_ue4_{version}`（适用于 UE 4.25 – 4.27）或 `unreal_plugin_prebuilt_ue5_{version}`（适用于 UE 5.0 – 5.7）；
   - 解压到游戏项目的 `Plugins` 目录下。
 
 - **源码版（Source）**
-  - 从 [Releases 页面](https://github.com/Tencent/BqLog/releases)根据引擎版本下载 `unreal_plugin_sources_ue4_{version}` 或 `unreal_plugin_sources_ue5_{version}`；
+  - 从 [Releases 页面](https://github.com/Tencent/BqLog/releases) 下载 `unreal_plugin_sources_ue4_{version}`（适用于 UE 4.25 – 4.27）或 `unreal_plugin_sources_ue5_{version}`（适用于 UE 5.0 – 5.7）；
   - 解压到游戏项目的 `Plugins` 目录下，由引擎进行二次编译。
 
 ### 启用插件
