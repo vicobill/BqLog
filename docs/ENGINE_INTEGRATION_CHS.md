@@ -43,11 +43,13 @@ log.info("Hello from Unity! value:{}", 42);
 
 | 安装方式 | 支持的 Unreal Engine 版本 |
 |---|---|
-| **Fab** | UE 4.22 – 4.27 以及 UE 5.0 – 5.7（每个次版本都提供专用 zip） |
+| **Fab** | UE 4.22 – 4.27 以及 UE 5.0 – 5.7（全版本支持，每个次版本都提供专用 zip） |
 | **预编译版（GitHub Release）** | UE 4.25 – 4.27（`ue4` 包）与 UE 5.0 – 5.7（`ue5` 包） |
 | **源码版（GitHub Release）** | UE 4.25 – 4.27（`ue4` 包）与 UE 5.0 – 5.7（`ue5` 包） |
 
 > **使用 UE 4.22 / 4.23 / 4.24？** 请通过 [Fab](https://www.fab.com/listings/386d1c78-e164-4e97-8b3e-e88cbf9b6acf) 安装——Fab 上每个引擎次版本的专用 zip 针对这些老 UE4 的 `.uplugin` 语法差异做了适配（旧版 UBT 不识别 `UncookedOnly` 或 `LinuxAArch64` 等标识符）。GitHub Release 上的通用 `ue4` 包只针对 UE 4.25+。
+>
+> **UE 4.22 与 4.23 的 Mac / iOS 支持：** 由于 Fab 构建机的限制，Fab 上针对 UE 4.22 与 4.23 的 zip **未包含** Mac 与 iOS 版本。如果在这两个引擎版本下需要 Mac 或 iOS 支持，请前往 [GitHub Releases 页面](https://github.com/Tencent/BqLog/releases) 下载 **源码版** 或 **预编译版** 手动引入。
 
 ### 集成方式
 

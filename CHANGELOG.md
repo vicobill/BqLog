@@ -1,5 +1,9 @@
 # Changelog
 
+## [v2.2.9] - 2026-05-06
+- **Compatibility**: Improved code compatibility with earlier Clang toolchains and frameworks such as MFC.
+- **Compatibility**: Improved code compatibility across all supported Unreal Engine versions.
+
 ## [v2.2.8] - 2026-04-10
 - **Code quality**: Refactored all SFINAE usages — moved `enable_if` from return types to template parameters for improved readability and consistency.
 - **Bug fix**: [Crash when enable stack trace in C++ #62](https://github.com/Tencent/BqLog/issues/62)
