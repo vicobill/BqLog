@@ -6449,54 +6449,54 @@ jobs:
   # manual dispatch (github.event_name == 'workflow_dispatch') so that
   # release.yml — which also publishes to BqLogFabRelease — never fires this.
   # Remove this job once the Fab flow is verified end to end.
-  fab_sources_only_release:
-    runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'workflow_dispatch' }}
-    needs:
-      - extract_version
-      - unreal_plugin_build_on_linux
-    steps:
-      - name: Download Fab source artifacts
-        uses: actions/download-artifact@v8
-        with:
-          pattern: _dont_download_this_only_for_fab_ue_*_${{ needs.extract_version.outputs.version }}
-          path: downloaded_fab_sources/
-
-      - name: Pack each Fab artifact into its own zip
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p fab_release_assets
-          for artifact_dir in downloaded_fab_sources/*/; do
-            name="$(basename "$artifact_dir")"
-            (cd "$artifact_dir" && zip -qry "$OLDPWD/fab_release_assets/${name}.zip" .)
-          done
-          echo "=== Fab release assets ==="
-          ls -l fab_release_assets/
-
-      - name: Publish test release to pippocao/BqLogFabRelease
-        uses: softprops/action-gh-release@v3
-        with:
-          # Pass the cross-repo PAT via the `token` input, not env.GITHUB_TOKEN.
-          # softprops/action-gh-release@v3's `token` input defaults to
-          # `${{ github.token }}` and that default silently wins over any
-          # GITHUB_TOKEN env var — using env alone causes 403 "Resource not
-          # accessible by integration" because github.token can't write to
-          # another repo.
-          token: ${{ secrets.FAB_RELEASE_TOKEN }}
-          repository: pippocao/BqLogFabRelease
-          # Suffix with run_id so repeated smoke-test runs never collide on tag.
-          tag_name: Test_Release_${{ needs.extract_version.outputs.version }}_${{ github.run_id }}
-          name: Test Release ${{ needs.extract_version.outputs.version }} (Fab sources only, run ${{ github.run_id }})
-          body: |
-            Temporary smoke-test release of the 14 per-engine-version Fab source zips.
-            Created by the `fab_sources_only_release` job in build.yml for BqLog
-            ${{ needs.extract_version.outputs.version }}.
-
-            Not for general consumption — delete once Fab review is verified.
-          draft: false
-          prerelease: true
-          files: fab_release_assets/*
+#  fab_sources_only_release:
+#    runs-on: ubuntu-latest
+#    if: ${{ github.event_name == 'workflow_dispatch' }}
+#    needs:
+#      - extract_version
+#      - unreal_plugin_build_on_linux
+#    steps:
+#      - name: Download Fab source artifacts
+#        uses: actions/download-artifact@v8
+#        with:
+#          pattern: _dont_download_this_only_for_fab_ue_*_${{ needs.extract_version.outputs.version }}
+#          path: downloaded_fab_sources/
+#
+#      - name: Pack each Fab artifact into its own zip
+#        shell: bash
+#        run: |
+#          set -euo pipefail
+#          mkdir -p fab_release_assets
+#          for artifact_dir in downloaded_fab_sources/*/; do
+#            name="$(basename "$artifact_dir")"
+#            (cd "$artifact_dir" && zip -qry "$OLDPWD/fab_release_assets/${name}.zip" .)
+#          done
+#          echo "=== Fab release assets ==="
+#          ls -l fab_release_assets/
+#
+#      - name: Publish test release to pippocao/BqLogFabRelease
+#        uses: softprops/action-gh-release@v3
+#        with:
+#          # Pass the cross-repo PAT via the `token` input, not env.GITHUB_TOKEN.
+#          # softprops/action-gh-release@v3's `token` input defaults to
+#          # `${{ github.token }}` and that default silently wins over any
+#          # GITHUB_TOKEN env var — using env alone causes 403 "Resource not
+#          # accessible by integration" because github.token can't write to
+#          # another repo.
+#          token: ${{ secrets.FAB_RELEASE_TOKEN }}
+#          repository: pippocao/BqLogFabRelease
+#          # Suffix with run_id so repeated smoke-test runs never collide on tag.
+#          tag_name: Test_Release_${{ needs.extract_version.outputs.version }}_${{ github.run_id }}
+#          name: Test Release ${{ needs.extract_version.outputs.version }} (Fab sources only, run ${{ github.run_id }})
+#          body: |
+#            Temporary smoke-test release of the 14 per-engine-version Fab source zips.
+#            Created by the `fab_sources_only_release` job in build.yml for BqLog
+#            ${{ needs.extract_version.outputs.version }}.
+#
+#            Not for general consumption — delete once Fab review is verified.
+#          draft: false
+#          prerelease: true
+#          files: fab_release_assets/*
 
   unreal_plugin_build_on_win64:
     runs-on: windows-latest
