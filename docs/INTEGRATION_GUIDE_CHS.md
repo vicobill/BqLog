@@ -222,6 +222,26 @@ target_link_libraries(${CMAKE_PROJECT_NAME} PUBLIC bqlog::BqLog)
 
 ---
 
+## OpenHarmony（ArkTS / C++）
+
+OpenHarmony 与 HarmonyOS NEXT 共用同一套 OHOS NDK 工具链，原生 ABI 完全一致——C++ 源码、ArkTS Wrapper 与运行时 API 在两个系统上是同一份代码。两者唯一区别在于 HAR 内 `runtimeOS` 字段：HarmonyOS 版置为 `HarmonyOS`，OpenHarmony 版置为 `OpenHarmony`。OpenHarmony 版 HAR 编译时 `compatibleSdkVersion=10`、`targetSdkVersion=12`，可在 OpenHarmony 4.0 (API 10) / 4.1 (API 11) / 5.0 (API 12) 上二进制兼容运行。
+
+### 集成方式
+
+- **手动引入 har（推荐）**
+
+  从 [Releases 页面](https://github.com/Tencent/BqLog/releases) 下载 `open_harmony_libs_{version}`，包内含 `bqlog.har`，复制到项目中，然后在模块的 `oh-package.json5` 中添加：
+
+  ```json5
+  "dependencies": {
+      "bqlog": "file:./path/to/bqlog.har"
+  }
+  ```
+
+C++ 用法和 ArkTS API 与 HarmonyOS 版完全一致，参见上一节。
+
+---
+
 ## Node.js
 
 - 支持 CommonJS 与 ES Module。

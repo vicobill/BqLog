@@ -12,7 +12,7 @@
 [![GitHub Stars](https://img.shields.io/github/stars/Tencent/BqLog?style=flat&logo=github)](https://github.com/Tencent/BqLog/stargazers)
 [![GitHub Forks](https://img.shields.io/github/forks/Tencent/BqLog?style=flat&logo=github)](https://github.com/Tencent/BqLog/network/members)
 [![GitHub Issues](https://img.shields.io/github/issues/Tencent/BqLog?style=flat&logo=github)](https://github.com/Tencent/BqLog/issues)
-[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux%20%7C%20iOS%20%7C%20Android%20%7C%20HarmonyOS%20%7C%20Unix-lightgrey.svg?style=flat)]()
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux%20%7C%20iOS%20%7C%20Android%20%7C%20HarmonyOS%20%7C%20OpenHarmony%20%7C%20Unix-lightgrey.svg?style=flat)]()
 [![Language](https://img.shields.io/badge/language-C%2B%2B%20%7C%20Java%20%7C%20C%23%20%7C%20Kotlin%20%7C%20TypeScript%20%7C%20Python-blue.svg?style=flat)]()
 
 > BqLog is a lightweight, high-performance, industrial-grade logging system that has been widely used in online projects such as "Honor of Kings".
@@ -67,7 +67,7 @@
 
 | Platforms | Languages |
 |-----------|-----------|
-| Windows 64-bit, macOS, Linux (incl. embedded), iOS, Android, HarmonyOS, Unix (FreeBSD, NetBSD, OpenBSD, Solaris, etc.) | C++ (C++11+), Java / Kotlin, C# (Unity, .NET), ArkTS / C++ (HarmonyOS), JavaScript / TypeScript (Node.js), Python 3.7+, Unreal Engine (UE4 & UE5) |
+| Windows 64-bit, macOS, Linux (incl. embedded), iOS, Android, HarmonyOS, OpenHarmony, Unix (FreeBSD, NetBSD, OpenBSD, Solaris, etc.) | C++ (C++11+), Java / Kotlin, C# (Unity, .NET), ArkTS / C++ (HarmonyOS & OpenHarmony), JavaScript / TypeScript (Node.js), Python 3.7+, Unreal Engine (UE4 & UE5) |
 
 **Hardware architectures**: x86, x86_64, ARM32, ARM64
 **Integration methods**: Dynamic library, Static library, Source code
@@ -170,6 +170,20 @@ const config = `
 `;
 const log = bq.log.create_log("ohos_log", config);
 log.info("Hello from HarmonyOS! params: {}, {}", "text", 123);
+bq.log.force_flush_all_logs();
+```
+
+### TypeScript (OpenHarmony ArkTS)
+
+```typescript
+// Same API as HarmonyOS — install the OpenHarmony HAR (`bqlog-lib-openharmony-{version}` from Releases).
+import { bq } from "bqlog";
+const config = `
+    appenders_config.console.type=console
+    appenders_config.console.levels=[all]
+`;
+const log = bq.log.create_log("oh_log", config);
+log.info("Hello from OpenHarmony! params: {}, {}", "text", 123);
 bq.log.force_flush_all_logs();
 ```
 
