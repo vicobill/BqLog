@@ -144,6 +144,8 @@ namespace bq {
             rt_cache_.current_reading_.version_ = 0;
             clear_recovery_data();
         }
+        rt_cache_.current_reading_.is_in_recovery_reading_
+            = (rt_cache_.current_reading_.version_ != version_);
 
         block_node_head::alignment_assert();
 
@@ -820,6 +822,7 @@ namespace bq {
         rt_cache_.current_reading_.recovery_seq_records_[static_cast<uint16_t>(version_ - 1 - rt_reading.version_)].clear();
 #endif
         ++rt_reading.version_;
+        rt_reading.is_in_recovery_reading_ = (rt_reading.version_ != version_);
     }
 
     void log_buffer::refresh_traverse_end_mark()

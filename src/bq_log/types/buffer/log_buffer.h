@@ -188,6 +188,11 @@ namespace bq {
             return rt_cache_.current_reading_.version_;
         }
 
+        bq_forceinline bool is_current_reading_recovered() const
+        {
+            return rt_cache_.current_reading_.is_in_recovery_reading_;
+        }
+
         bq_forceinline const log_buffer_config& get_config() const
         {
             return config_;
@@ -270,6 +275,7 @@ namespace bq {
                 block_node_head* last_block_ = nullptr;
                 block_node_head* cur_block_ = nullptr;
                 uint16_t version_ = 0;
+                bool is_in_recovery_reading_ = true;
                 bq::array<bq::hash_map<void*, uint32_t>> recovery_records_; // <tls_buffer_info_ptr, seq> for each version, only works when reading recovering data
 #ifdef BQ_UNIT_TEST
                 bq::array<bq::hash_map<void*, bq::hash_map<uint32_t, uint16_t>>> recovery_seq_records_;

@@ -78,6 +78,8 @@ namespace bq {
         {
             return get_log_head().category_idx;
         }
+
+        bool validate() const;
     };
 
     BQ_PACK_BEGIN

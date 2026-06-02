@@ -330,6 +330,15 @@ namespace bq {
 
     void log_imp::process_log_chunk(bq::log_entry_handle& read_handle)
     {
+        BQ_UNLIKELY_IF(buffer_->is_current_reading_recovered() && !read_handle.validate())
+        {
+            bq::util::log_device_console(bq::log_level::warning,
+                "bqlog: corrupted recovered log entry detected and dropped. "
+                "data_size=%" PRIu32 ", log=%s",
+                read_handle.data_size(), name_.c_str());
+            return;
+        }
+
         if (recover_status_ == recover_status_enum::not_started) {
             auto current_version = buffer_->get_current_reading_version();
             auto version = buffer_->get_version();
