@@ -74,7 +74,7 @@ export class test_log_2 extends test_base {
                     `);
         bq.log.set_console_buffer_enable(false);
         bq.log.register_console_callback((log_id: bigint, category_idx: number, log_level: any, content: string) => {
-            if(log_id != 0n)
+            if(log_id != BigInt(0))
             {
                 result.add_result(log_id == log_inst_console.get_id(), "console callback test 1");
                 result.add_result(log_level == bq.log_level.debug, "console callback test 2");

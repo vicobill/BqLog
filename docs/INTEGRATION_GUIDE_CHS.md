@@ -174,7 +174,9 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
 
 ---
 
-## HarmonyOS（ArkTS / C++）
+## HarmonyOS / OpenHarmony（ArkTS / C++）
+
+> **HarmonyOS NEXT** 和 **OpenHarmony**（4.1+ / API 11+）共用 ohpm 上**同一个** `bqlog` 包：底层 `.so` 在两边二进制兼容，ArkTS Wrapper 只用公共 API，**不需要单独发包或单独配置**。
 
 ### 集成方式
 
@@ -202,7 +204,7 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
   }
   ```
 
-支持在 ArkTS 侧直接调用，也支持在 Native C++ 侧调用。
+支持在 ArkTS 侧直接调用，也支持在 Native C++ 侧调用。**HarmonyOS NEXT 和 OpenHarmony 上行为一致，使用方式完全相同。**
 
 ### C++（Native）使用方式
 

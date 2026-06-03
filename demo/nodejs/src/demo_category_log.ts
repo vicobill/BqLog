@@ -132,11 +132,11 @@
                 if (result.get_categories_count() != demo_category_log.categories_count) {
                     console.log("expected:" + demo_category_log.categories_count + ", but:" + result.get_categories_count());
 
-                    return new demo_category_log(0n);
+                    return new demo_category_log(BigInt(0));
                 }
                 for (let i = 0; i < result.get_categories_count(); ++i) {
                     if (demo_category_log.category_names[i] != demo_category_log.category_names[i]) {
-                        return new demo_category_log(0n);
+                        return new demo_category_log(BigInt(0));
                     }
                 }
                 return result;

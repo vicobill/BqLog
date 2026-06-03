@@ -1,5 +1,9 @@
 # Changelog
 
+## [v2.3.0] - 2026-06-03
+- **OpenHarmony compatibility**: Replaced ES2020 `0n` BigInt literals with `BigInt(0)` in the TypeScript wrapper so the same `bqlog` package on ohpm works on **OpenHarmony 4.1+ (API 11+)** as well as HarmonyOS NEXT — no separate package needed.
+- **Recovery hardening**: Strengthened data validation during recovery to detect malformed entries earlier and avoid potential crashes when consuming a corrupted ring buffer.
+
 ## [v2.2.9] - 2026-05-06
 - **Compatibility**: Improved code compatibility with earlier Clang toolchains and frameworks such as MFC.
 - **Compatibility**: Improved code compatibility across all supported Unreal Engine versions.

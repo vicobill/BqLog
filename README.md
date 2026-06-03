@@ -2,17 +2,17 @@
   <img src="banner.jpg" alt="BqLog Banner" width="100%">
 </p>
 
-# BqLog (BianQue Log) V 2.2.9
+# BqLog (BianQue Log) V 2.3.0
 
 **English** | [简体中文](./README_CHS.md)
 
 [![license](https://img.shields.io/badge/license-APACHE2.0-brightgreen.svg?style=flat)](LICENSE.txt)
-[![Release Version](https://img.shields.io/badge/release-2.2.9-red.svg)](https://github.com/Tencent/BqLog/releases)
-[![ChangeLog](https://img.shields.io/badge/📋_ChangeLog-v2.2.9-orange.svg?style=flat)](CHANGELOG.md)
+[![Release Version](https://img.shields.io/badge/release-2.3.0-red.svg)](https://github.com/Tencent/BqLog/releases)
+[![ChangeLog](https://img.shields.io/badge/📋_ChangeLog-v2.3.0-orange.svg?style=flat)](CHANGELOG.md)
 [![GitHub Stars](https://img.shields.io/github/stars/Tencent/BqLog?style=flat&logo=github)](https://github.com/Tencent/BqLog/stargazers)
 [![GitHub Forks](https://img.shields.io/github/forks/Tencent/BqLog?style=flat&logo=github)](https://github.com/Tencent/BqLog/network/members)
 [![GitHub Issues](https://img.shields.io/github/issues/Tencent/BqLog?style=flat&logo=github)](https://github.com/Tencent/BqLog/issues)
-[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux%20%7C%20iOS%20%7C%20Android%20%7C%20HarmonyOS%20%7C%20Unix-lightgrey.svg?style=flat)]()
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux%20%7C%20iOS%20%7C%20Android%20%7C%20HarmonyOS%20%7C%20OpenHarmony%20%7C%20Unix-lightgrey.svg?style=flat)]()
 [![Language](https://img.shields.io/badge/language-C%2B%2B%20%7C%20Java%20%7C%20C%23%20%7C%20Kotlin%20%7C%20TypeScript%20%7C%20Python-blue.svg?style=flat)]()
 
 > BqLog is a lightweight, high-performance, industrial-grade logging system that has been widely used in online projects such as "Honor of Kings".
@@ -22,12 +22,12 @@
 
 ---
 
-[![Download](https://img.shields.io/badge/⬇_Download-Release_2.2.9-blue.svg?style=for-the-badge)](https://github.com/Tencent/BqLog/releases/tag/Release_2.2.9)
+[![Download](https://img.shields.io/badge/⬇_Download-Release_2.3.0-blue.svg?style=for-the-badge)](https://github.com/Tencent/BqLog/releases/tag/Release_2.3.0)
 
-## 📋 What's New in v2.2.9
+## 📋 What's New in v2.3.0
 
-- **Compatibility** — Improved code compatibility with earlier Clang toolchains and frameworks such as MFC.
-- **Compatibility** — Improved code compatibility across all supported Unreal Engine versions.
+- **OpenHarmony compatibility** — Replaced `0n` BigInt literals with `BigInt(0)` in the TypeScript wrapper. The same `bqlog` package on ohpm now works on **OpenHarmony 4.1+ (API 11+)** as well as HarmonyOS NEXT.
+- **Recovery hardening** — Strengthened data validation during recovery to detect malformed entries earlier and avoid potential crashes when consuming a corrupted ring buffer.
 
 > Full changelog → [CHANGELOG.md](CHANGELOG.md)
 
@@ -67,7 +67,7 @@
 
 | Platforms | Languages |
 |-----------|-----------|
-| Windows 64-bit, macOS, Linux (incl. embedded), iOS, Android, HarmonyOS, Unix (FreeBSD, NetBSD, OpenBSD, Solaris, etc.) | C++ (C++11+), Java / Kotlin, C# (Unity, .NET), ArkTS / C++ (HarmonyOS), JavaScript / TypeScript (Node.js), Python 3.7+, Unreal Engine (UE4 & UE5) |
+| Windows 64-bit, macOS, Linux (incl. embedded), iOS, Android, HarmonyOS, OpenHarmony, Unix (FreeBSD, NetBSD, OpenBSD, Solaris, etc.) | C++ (C++11+), Java / Kotlin, C# (Unity, .NET), ArkTS / C++ (HarmonyOS & OpenHarmony share the same package), JavaScript / TypeScript (Node.js), Python 3.7+, Unreal Engine (UE4 & UE5) |
 
 **Hardware architectures**: x86, x86_64, ARM32, ARM64
 **Integration methods**: Dynamic library, Static library, Source code
@@ -160,7 +160,9 @@ my_log.info("Hello from Python! params: {}, {}", "text", 123)
 log.force_flush_all_logs()
 ```
 
-### TypeScript (HarmonyOS ArkTS)
+### TypeScript (HarmonyOS / OpenHarmony ArkTS)
+
+> The same `bqlog` package on ohpm works for both **HarmonyOS** (NEXT) and **OpenHarmony** (4.1+ / API 11+). Same install, same import, same code.
 
 ```typescript
 import { bq } from "bqlog";
@@ -169,7 +171,7 @@ const config = `
     appenders_config.console.levels=[all]
 `;
 const log = bq.log.create_log("ohos_log", config);
-log.info("Hello from HarmonyOS! params: {}, {}", "text", 123);
+log.info("Hello from HarmonyOS / OpenHarmony! params: {}, {}", "text", 123);
 bq.log.force_flush_all_logs();
 ```
 

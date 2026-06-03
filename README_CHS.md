@@ -2,17 +2,17 @@
   <img src="banner.jpg" alt="BqLog Banner" width="100%">
 </p>
 
-# BqLog (扁鹊日志) V 2.2.9
+# BqLog (扁鹊日志) V 2.3.0
 
 [English](./README.md) | **简体中文**
 
 [![license](https://img.shields.io/badge/license-APACHE2.0-brightgreen.svg?style=flat)](LICENSE.txt)
-[![Release Version](https://img.shields.io/badge/release-2.2.9-red.svg)](https://github.com/Tencent/BqLog/releases)
-[![ChangeLog](https://img.shields.io/badge/📋_更新日志-v2.2.9-orange.svg?style=flat)](CHANGELOG.md)
+[![Release Version](https://img.shields.io/badge/release-2.3.0-red.svg)](https://github.com/Tencent/BqLog/releases)
+[![ChangeLog](https://img.shields.io/badge/📋_更新日志-v2.3.0-orange.svg?style=flat)](CHANGELOG.md)
 [![GitHub Stars](https://img.shields.io/github/stars/Tencent/BqLog?style=flat&logo=github)](https://github.com/Tencent/BqLog/stargazers)
 [![GitHub Forks](https://img.shields.io/github/forks/Tencent/BqLog?style=flat&logo=github)](https://github.com/Tencent/BqLog/network/members)
 [![GitHub Issues](https://img.shields.io/github/issues/Tencent/BqLog?style=flat&logo=github)](https://github.com/Tencent/BqLog/issues)
-[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux%20%7C%20iOS%20%7C%20Android%20%7C%20HarmonyOS%20%7C%20Unix-lightgrey.svg?style=flat)]()
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux%20%7C%20iOS%20%7C%20Android%20%7C%20HarmonyOS%20%7C%20OpenHarmony%20%7C%20Unix-lightgrey.svg?style=flat)]()
 [![Language](https://img.shields.io/badge/language-C%2B%2B%20%7C%20Java%20%7C%20C%23%20%7C%20Kotlin%20%7C%20TypeScript%20%7C%20Python-blue.svg?style=flat)]()
 
 > BqLog 是一个轻量级、高性能的工业级日志系统，已在线上广泛应用于《王者荣耀》等项目。
@@ -22,12 +22,12 @@
 
 ---
 
-[![Download](https://img.shields.io/badge/⬇_下载-Release_2.2.9-blue.svg?style=for-the-badge)](https://github.com/Tencent/BqLog/releases/tag/Release_2.2.9)
+[![Download](https://img.shields.io/badge/⬇_下载-Release_2.3.0-blue.svg?style=for-the-badge)](https://github.com/Tencent/BqLog/releases/tag/Release_2.3.0)
 
-## 📋 v2.2.9 更新亮点
+## 📋 v2.3.0 更新亮点
 
-- **兼容性优化** — 改进对早期 Clang 工具链以及 MFC 等框架的代码兼容性。
-- **兼容性优化** — 完善对 Unreal Engine 各版本的代码兼容性。
+- **OpenHarmony 兼容性** — 把 TypeScript Wrapper 中的 `0n` BigInt 字面量替换为 `BigInt(0)`，ohpm 上同一个 `bqlog` 包现已可在 **OpenHarmony 4.1+（API 11+）** 和 HarmonyOS NEXT 上通用，无需单独发包。
+- **Recovery 加固** — 强化 Recovery 过程中的数据校验，能更早识别异常 entry，避免读取损坏 ring buffer 时潜在的 Crash。
 
 > 完整更新日志 → [CHANGELOG.md](CHANGELOG.md)
 
@@ -68,7 +68,7 @@
 
 | 平台 | 语言 |
 |------|------|
-| Windows 64-bit、macOS、Linux（含嵌入式）、iOS、Android、HarmonyOS、Unix（FreeBSD、NetBSD、OpenBSD、Solaris 等） | C++（C++11+）、Java / Kotlin、C#（Unity、.NET）、ArkTS / C++（HarmonyOS）、JavaScript / TypeScript（Node.js）、Python 3.7+、Unreal Engine（UE4 & UE5） |
+| Windows 64-bit、macOS、Linux（含嵌入式）、iOS、Android、HarmonyOS、OpenHarmony、Unix（FreeBSD、NetBSD、OpenBSD、Solaris 等） | C++（C++11+）、Java / Kotlin、C#（Unity、.NET）、ArkTS / C++（HarmonyOS 与 OpenHarmony 同一份包）、JavaScript / TypeScript（Node.js）、Python 3.7+、Unreal Engine（UE4 & UE5） |
 
 **硬件架构**：x86、x86_64、ARM32、ARM64
 **引入方式**：动态库、静态库、源代码
@@ -161,7 +161,9 @@ my_log.info("Hello from Python! params: {}, {}", "text", 123)
 log.force_flush_all_logs()
 ```
 
-### TypeScript (鸿蒙 ArkTS)
+### TypeScript (鸿蒙 / OpenHarmony ArkTS)
+
+> 同一个 ohpm 上的 `bqlog` 包同时适用于 **HarmonyOS**（NEXT）和 **OpenHarmony**（4.1+ / API 11+）。安装、引用、API 完全一致。
 
 ```typescript
 import { bq } from "bqlog";
@@ -170,7 +172,7 @@ const config = `
     appenders_config.console.levels=[all]
 `;
 const log = bq.log.create_log("ohos_log", config);
-log.info("Hello from HarmonyOS! params: {}, {}", "text", 123);
+log.info("Hello from HarmonyOS / OpenHarmony! params: {}, {}", "text", 123);
 bq.log.force_flush_all_logs();
 ```
 

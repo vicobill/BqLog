@@ -173,7 +173,9 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
 
 ---
 
-## HarmonyOS (ArkTS / C++)
+## HarmonyOS / OpenHarmony (ArkTS / C++)
+
+> **HarmonyOS NEXT** and **OpenHarmony** (4.1+ / API 11+) share the **same** `bqlog` package on ohpm. The native `.so` is binary-compatible across both runtimes, and the ArkTS wrapper uses only common APIs. No separate package or build is needed.
 
 ### Integration
 
@@ -201,7 +203,7 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
   }
   ```
 
-Supports direct calling from ArkTS side, also supports calling from Native C++ side.
+Supports direct calling from ArkTS side, also supports calling from Native C++ side. Works identically on HarmonyOS NEXT and OpenHarmony.
 
 ### C++ (Native) usage
 
