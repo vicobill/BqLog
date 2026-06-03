@@ -221,26 +221,6 @@ Then include in C++:
 
 ---
 
-## OpenHarmony (ArkTS / C++)
-
-OpenHarmony shares the same OHOS NDK toolchain and the same native ABI as HarmonyOS NEXT, so the C++ source, ArkTS wrapper, and runtime API are 100% identical between the two. The only difference is the HAR's `runtimeOS` field, which is set to `OpenHarmony` for the OpenHarmony-targeted package. The HAR is built with `compatibleSdkVersion: 10` and `targetSdkVersion: 12`, binary-compatible across OpenHarmony 4.0 (API 10), 4.1 (API 11), and 5.0 (API 12).
-
-### Integration
-
-- **Manual har (recommended)**
-
-  Download `open_harmony_libs_{version}` from the [Releases page](https://github.com/Tencent/BqLog/releases). The artifact contains `bqlog.har`, copy it into your project, then add to your module's `oh-package.json5`:
-
-  ```json5
-  "dependencies": {
-      "bqlog": "file:./path/to/bqlog.har"
-  }
-  ```
-
-The C++ usage and ArkTS API are exactly the same as HarmonyOS — see the section above.
-
----
-
 ## Node.js
 
 - Supports CommonJS and ES Modules.
