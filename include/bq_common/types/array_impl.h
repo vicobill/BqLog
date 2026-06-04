@@ -267,6 +267,7 @@ namespace bq {
 #ifndef NDEBUG
         assert(static_cast<size_type>(idx) < size_);
 #endif
+        assert(data_ && "data_ is null");
         return data_[static_cast<size_type>(idx)];
     }
 
@@ -277,6 +278,7 @@ namespace bq {
 #ifndef NDEBUG
         assert(static_cast<size_type>(idx) < size_);
 #endif
+        assert(data_ && "data_ is null");
         return data_[static_cast<size_type>(idx)];
     }
 

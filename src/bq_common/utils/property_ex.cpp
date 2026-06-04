@@ -94,7 +94,7 @@ namespace bq {
 
     static bool parse_array_value(string str)
     {
-        if (str.is_empty() || str.size() < 2)
+        if (str.size() < 2)
             return false;
         return str[0] == '[' && str[str.size() - 1] == ']';
     }
