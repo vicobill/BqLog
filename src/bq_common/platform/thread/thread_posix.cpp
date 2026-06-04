@@ -296,8 +296,9 @@ namespace bq {
         {
             thread_name_ = thread_name;
             if (thread_name_.size() >= 15) {
-                bq::util::log_device_console(bq::log_level::warning, "thread name \"%s\" excceed max length limit of android, the length of thread name can not be larger than 15. so it will be truncated to \"%s\"", thread_name_.c_str(), thread_name_.substr(0, 15).c_str());
-                thread_name_ = thread_name_.substr(0, 15);
+                bq::string truncated_name = thread_name_.substr(0, 15);
+                bq::util::log_device_console(bq::log_level::warning, "thread name \"%s\" exceed max length limit of android, the length of thread name can not be larger than 15. so it will be truncated to \"%s\"", thread_name_.c_str(), truncated_name.c_str());
+                thread_name_ = truncated_name;
             }
             auto current_status = status_.load();
             if (current_status == enum_thread_status::running) {
