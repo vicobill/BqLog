@@ -267,8 +267,9 @@ namespace bq {
 #ifndef NDEBUG
         assert(static_cast<size_type>(idx) < size_);
 #endif
-        assert(data_ && "data_ is null");
+        BQ_SUPPRESS_NULL_DEREF_BEGIN();
         return data_[static_cast<size_type>(idx)];
+        BQ_SUPPRESS_NULL_DEREF_END();
     }
 
     template <typename T, typename Allocator, size_t TAIL_BUFFER_SIZE>
@@ -278,8 +279,9 @@ namespace bq {
 #ifndef NDEBUG
         assert(static_cast<size_type>(idx) < size_);
 #endif
-        assert(data_ && "data_ is null");
+        BQ_SUPPRESS_NULL_DEREF_BEGIN();
         return data_[static_cast<size_type>(idx)];
+        BQ_SUPPRESS_NULL_DEREF_END();
     }
 
     template <typename T1, typename T2, typename Allocator1, typename Allocator2, size_t S1, size_t S2>

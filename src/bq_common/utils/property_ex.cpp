@@ -96,7 +96,9 @@ namespace bq {
     {
         if (str.size() < 2)
             return false;
+        BQ_SUPPRESS_NULL_DEREF_BEGIN();
         return str[0] == '[' && str[str.size() - 1] == ']';
+        BQ_SUPPRESS_NULL_DEREF_END();
     }
 
     static property_value parse_to_property_value(property_value& root, string key, const string& value)
