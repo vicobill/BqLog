@@ -51,13 +51,26 @@ namespace bq {
 
         DWORD file_size_high = 0;
         DWORD file_size_low = GetFileSize(file_handle, &file_size_high);
+        if (INVALID_FILE_SIZE == file_size_low && NO_ERROR != GetLastError()) {
+            result.error_code_ = static_cast<int32_t>(GetLastError());
+            bq::util::log_device_console(log_level::error, "create_memory_map GetFileSize failed, path:%s, error_code:%d", map_file.abs_file_path().c_str(), result.error_code_);
+            return result;
+        }
         size_t current_file_size = ((size_t)file_size_high << 32) | (size_t)file_size_low;
         if (current_file_size < real_min_file_size) {
             size_t new_size = real_min_file_size;
             LONG new_size_high = (LONG)(new_size >> 32);
             LONG new_size_low = (LONG)(new_size & 0xFFFFFFFF);
-            SetFilePointer(file_handle, new_size_low, &new_size_high, FILE_BEGIN);
-            SetEndOfFile(file_handle);
+            if (INVALID_SET_FILE_POINTER == SetFilePointer(file_handle, new_size_low, &new_size_high, FILE_BEGIN) && NO_ERROR != GetLastError()) {
+                result.error_code_ = static_cast<int32_t>(GetLastError());
+                bq::util::log_device_console(log_level::error, "create_memory_map SetFilePointer failed, path:%s, error_code:%d", map_file.abs_file_path().c_str(), result.error_code_);
+                return result;
+            }
+            if (!SetEndOfFile(file_handle)) {
+                result.error_code_ = static_cast<int32_t>(GetLastError());
+                bq::util::log_device_console(log_level::error, "create_memory_map SetEndOfFile failed, path:%s, error_code:%d", map_file.abs_file_path().c_str(), result.error_code_);
+                return result;
+            }
         }
 
         DWORD new_size_high = (DWORD)(real_min_file_size >> 32);
@@ -76,6 +89,9 @@ namespace bq {
             memory_map_handle = 0;
             result.error_code_ = static_cast<int32_t>(GetLastError());
             bq::util::log_device_console(log_level::error, "map_to_memory file failed, path:%s, error_code:%d", map_file.abs_file_path().c_str(), result.error_code_);
+            // must return here, otherwise a failed handle would be filled with
+            // a valid file_ and a bogus mapped_data_ when alignment_offset != 0
+            return result;
         }
         result.mapped_data_ = (void*)((uint8_t*)result.real_data_ + alignment_offset);
         result.file_ = map_file;
