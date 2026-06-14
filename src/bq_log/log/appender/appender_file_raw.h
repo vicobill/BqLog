@@ -19,7 +19,7 @@ namespace bq {
         static constexpr uint32_t format_version = 6;
 
     protected:
-        virtual void log_impl(const log_entry_handle& handle) override;
+        virtual bool log_impl(const log_entry_handle& handle) override;
         virtual bq::string get_file_ext_name() override;
         virtual uint32_t get_binary_format_version() const override;
 

@@ -25,6 +25,7 @@
 #include "test_log_appender.h"
 #include "test_log.h"
 #include "test_layout.h"
+#include "test_disk_full.h"
 #include <locale.h>
 #if defined(BQ_WIN)
 #include <windows.h>
@@ -111,6 +112,7 @@ int32_t main_logic()
     TEST_GROUP(Bq_Log_Test, bq::test, test_miso_ring_buffer);
     TEST_GROUP(Bq_Log_Test, bq::test, test_log);
     TEST_GROUP(Bq_Log_Test, bq::test, test_layout);
+    TEST_GROUP(Bq_Log_Test, bq::test, test_disk_full);
     TEST_GROUP_END(Bq_Log_Test);
 
     bool test_result = TEST_GROUP_RESULT(Bq_Common_Test) && TEST_GROUP_RESULT(Bq_Log_Test);

@@ -37,6 +37,7 @@ namespace bq {
         err_data_not_contiguous, // data is not contiguous, this error code is only used for internal statistics within the log_buffer and will not be exposed externally.
         err_alloc_size_invalid, // invalid alloc size, too big or 0.
         err_buffer_not_inited, // buffer not initialized
+        err_io_failure_drop, // unrecoverable IO failure (e.g. disk-full when creating a recovery-mode mmap-backed oversize buffer); the producer must drop this entry immediately. Waiting is futile - no consumer can ever free disk blocks. This error code MUST NEVER be translated to err_wait_and_retry by any layer.
         result_code_count
     };
 

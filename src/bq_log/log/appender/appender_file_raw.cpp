@@ -11,15 +11,18 @@
 #include "bq_log/log/appender/appender_file_raw.h"
 
 namespace bq {
-    void appender_file_raw::log_impl(const log_entry_handle& handle)
+    bool appender_file_raw::log_impl(const log_entry_handle& handle)
     {
-        appender_file_base::log_impl(handle);
+        if (!appender_file_base::log_impl(handle)) {
+            return false;
+        }
         uint32_t item_size = handle.data_size();
         auto write_handle = alloc_write_cache(sizeof(item_size) + item_size);
         *(decltype(item_size)*)write_handle.data() = item_size;
         memcpy(write_handle.data() + sizeof(item_size), handle.data(), item_size);
         return_write_cache(write_handle);
         mark_write_finished();
+        return true;
     }
 
     bq::string appender_file_raw::get_file_ext_name()

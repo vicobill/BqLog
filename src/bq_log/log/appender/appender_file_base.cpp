@@ -52,13 +52,28 @@ namespace bq {
         if (cache_write_entity_->size() > CACHE_WRITE_DEFAULT_SIZE && get_total_used_write_cache_size() <= (CACHE_READ_DEFAULT_SIZE >> 1)) {
             resize_cache_write_entity(CACHE_WRITE_DEFAULT_SIZE);
         }
-        if (error_code != 0 && error_code !=
+        const bool is_disk_full_error = (error_code ==
 #if defined(BQ_WIN)
-                ERROR_DISK_FULL
+                                                       ERROR_DISK_FULL || error_code == ERROR_HANDLE_DISK_FULL
 #else
-                ENOSPC
+                                                       ENOSPC
 #endif
-        ) {
+        );
+        // disk_full_drop_ state machine.
+        //   set: disk is full right now. New entries arriving at log_impl
+        //        are dropped at the door so the cache cannot grow without
+        //        bound while we wait for the disk to free up. Whatever is
+        //        ALREADY in cache stays there - we will keep retrying it
+        //        on every subsequent flush so it eventually lands on disk
+        //        once space is back.
+        //   clear: a flush completed cleanly AND drained the entire pending
+        //        payload. log_impl resumes accepting new entries.
+        if (is_disk_full_error) {
+            disk_full_drop_ = true;
+        } else if (error_code == 0 && real_write_size == need_write_size) {
+            disk_full_drop_ = false;
+        }
+        if (error_code != 0 && !is_disk_full_error) {
             char error_text[256] = { 0 };
             auto epoch = bq::platform::high_performance_epoch_ms();
             struct tm time_st;
@@ -110,9 +125,26 @@ namespace bq {
         return (prev_config_file_name == config_file_name_) && (prev_base_dir_type == base_dir_type_);
     }
 
-    void appender_file_base::log_impl(const log_entry_handle& handle)
+    bool appender_file_base::log_impl(const log_entry_handle& handle)
     {
-        refresh_file_handle(handle);
+        // Hot path: disk healthy, branch never taken, single inlined load
+        // of disk_full_drop_. BQ_UNLIKELY_IF gives the compiler a hint to
+        // keep this off the fast path.
+        //
+        // When the previous flush hit ENOSPC, drop the incoming entry at
+        // the door so the in-memory cache cannot grow without bound while
+        // we wait for the disk to free up. Whatever was already in cache
+        // BEFORE the ENOSPC stays there - the next flush will retry and
+        // those entries land as soon as space comes back. The single
+        // entry whose write tipped the disk over the edge is kept too
+        // (it had already been mark_write_finished()'d into the cache
+        // before flush ran), so consumers see at most one transitional
+        // entry around the disk-full event.
+        BQ_UNLIKELY_IF(should_drop_due_to_io_failure())
+        {
+            return false;
+        }
+        return refresh_file_handle(handle);
     }
 
     void appender_file_base::on_file_open(bool is_new_created)
@@ -142,20 +174,20 @@ namespace bq {
         }
     }
 
-    void appender_file_base::on_log_item_recovery_begin(bq::log_entry_handle& read_handle)
+    bool appender_file_base::on_log_item_recovery_begin(bq::log_entry_handle& read_handle)
     {
         flush_write_cache();
-        refresh_file_handle(read_handle);
+        return refresh_file_handle(read_handle);
     }
 
     void appender_file_base::on_log_item_recovery_end()
     {
     }
 
-    void appender_file_base::on_log_item_new_begin(bq::log_entry_handle& read_handle)
+    bool appender_file_base::on_log_item_new_begin(bq::log_entry_handle& read_handle)
     {
         flush_write_cache();
-        refresh_file_handle(read_handle);
+        return refresh_file_handle(read_handle);
     }
 
     appender_file_base::read_with_cache_handle appender_file_base::read_with_cache(size_t size)
@@ -284,7 +316,7 @@ namespace bq {
         flush_when_destruct_ = flush;
     }
 
-    void appender_file_base::refresh_file_handle(const log_entry_handle& handle)
+    bool appender_file_base::refresh_file_handle(const log_entry_handle& handle)
     {
         bool need_create_new_file = (!file_) || is_file_oversize();
         if ((!need_create_new_file) && enable_rolling_log_file_) {
@@ -312,6 +344,7 @@ namespace bq {
             clear_read_cache();
             open_new_indexed_file_by_name();
         }
+        return static_cast<bool>(file_);
     }
 
     bool appender_file_base::open_file_with_write_exclusive(const bq::string& file_path)
@@ -538,6 +571,7 @@ namespace bq {
         string full_path = TO_ABSOLUTE_PATH(dir_name, base_dir_type_);
         bq::file_manager::create_directory(full_path);
         bool need_open_new_file = true;
+        bool disk_full_detected = false;
         while (need_open_new_file) {
             char idx_buff[32];
             snprintf(idx_buff, sizeof(idx_buff), "%d", max_index++);
@@ -545,10 +579,29 @@ namespace bq {
             bq::string absolute_file_path = TO_ABSOLUTE_PATH(file_relative_path, base_dir_type_);
             parse_file_context parse_context(absolute_file_path);
 
-            need_open_new_file = !open_file_with_write_exclusive(absolute_file_path) || is_file_oversize();
+            bool open_ok = open_file_with_write_exclusive(absolute_file_path);
+            if (!open_ok) {
+                int32_t err = bq::file_manager::get_and_clear_last_file_error();
+                bool is_disk_full = false;
+#if defined(BQ_WIN)
+                is_disk_full = (err == static_cast<int32_t>(ERROR_DISK_FULL)
+                    || err == static_cast<int32_t>(ERROR_HANDLE_DISK_FULL));
+#else
+                is_disk_full = (err == ENOSPC);
+#endif
+                if (is_disk_full) {
+                    --max_index; // undo the post-increment so we retry this index next time
+                    disk_full_detected = true;
+                    break;
+                }
+            }
+            need_open_new_file = !open_ok || is_file_oversize();
             if (!need_open_new_file) {
                 need_open_new_file |= (current_file_size_ > 0 && !parse_exist_log_file(parse_context));
             }
+        }
+        if (disk_full_detected) {
+            return;
         }
         refresh_cache_write_head_size(is_recovery_enabled(), file_.abs_file_path());
         if (is_recovery_enabled()) {

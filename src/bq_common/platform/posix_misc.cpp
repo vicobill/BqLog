@@ -423,6 +423,13 @@ namespace bq {
 
         int32_t open_file(const char* path, file_open_mode_enum mode, platform_file_handle& out_file_handle)
         {
+#if defined(BQ_UNIT_TEST)
+            if (test_inject::get_fault() == test_inject::fault_kind::enospc_on_open
+                && test_inject::path_matches_filter(path)) {
+                out_file_handle = invalid_platform_file_handle;
+                return ENOSPC;
+            }
+#endif
             int32_t flags = 0;
             if ((mode & file_open_mode_enum::read_write) == file_open_mode_enum::read_write) {
                 flags |= O_RDWR;
@@ -481,6 +488,13 @@ namespace bq {
         int32_t write_file(const platform_file_handle& file_handle, const void* src_addr, size_t write_size, size_t& out_real_write_size)
         {
             out_real_write_size = 0;
+#if defined(BQ_UNIT_TEST)
+            if (test_inject::get_fault() == test_inject::fault_kind::enospc_on_write) {
+                // Filter doesn't apply to write_file because we don't have a path here;
+                // tests should scope by clearing the fault before/after the targeted op.
+                return ENOSPC;
+            }
+#endif
             const char* current_src = static_cast<const char*>(src_addr);
             size_t remaining = write_size;
 

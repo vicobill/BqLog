@@ -79,7 +79,9 @@ namespace bq {
 
         virtual bool reset_impl(const bq::property_value& config_obj) override;
 
-        virtual void log_impl(const log_entry_handle& handle) override;
+        virtual bool log_impl(const log_entry_handle& handle) override;
+
+        bq_forceinline bool should_drop_due_to_io_failure() const { return disk_full_drop_; }
 
         virtual bool parse_exist_log_file(parse_file_context& context) = 0;
 
@@ -91,11 +93,11 @@ namespace bq {
 
         virtual void seek_read_file_offset(int32_t offset);
 
-        virtual void on_log_item_recovery_begin(bq::log_entry_handle& read_handle) override;
+        virtual bool on_log_item_recovery_begin(bq::log_entry_handle& read_handle) override;
 
         virtual void on_log_item_recovery_end() override;
 
-        virtual void on_log_item_new_begin(bq::log_entry_handle& read_handle) override;
+        virtual bool on_log_item_new_begin(bq::log_entry_handle& read_handle) override;
 
         size_t get_current_file_size() const { return current_file_size_; }
 
@@ -141,7 +143,7 @@ namespace bq {
 
         void clear_all_limit_files(); // capacity limit
 
-        void refresh_file_handle(const log_entry_handle& handle);
+        bool refresh_file_handle(const log_entry_handle& handle);
 
         bool open_file_with_write_exclusive(const bq::string& file_path);
 
@@ -172,6 +174,7 @@ namespace bq {
         uint64_t capacity_limit_;
         uint64_t current_file_expire_time_epoch_ms_;
         bool flush_when_destruct_ = true;
+        bool disk_full_drop_ = false;
 
     private:
         BQ_PACK_BEGIN

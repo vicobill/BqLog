@@ -371,6 +371,13 @@ namespace bq {
 
         int32_t open_file(const char* path, file_open_mode_enum mode, platform_file_handle& out_file_handle)
         {
+#if defined(BQ_UNIT_TEST)
+            if (test_inject::get_fault() == test_inject::fault_kind::enospc_on_open
+                && test_inject::path_matches_filter(path)) {
+                out_file_handle = invalid_platform_file_handle;
+                return static_cast<int32_t>(ERROR_DISK_FULL);
+            }
+#endif
             bq::u16string file_path_w = u"\\\\?\\" + trans_to_windows_wide_string(force_to_abs_path(get_lexically_path(path)));
             out_file_handle = CreateFileW((LPCWSTR)file_path_w.c_str(), ((int32_t)(mode & file_open_mode_enum::read) ? GENERIC_READ : 0) | ((int32_t)(mode & file_open_mode_enum::write) ? GENERIC_WRITE : 0), ((int32_t)(mode & file_open_mode_enum::exclusive) ? FILE_SHARE_READ : (FILE_SHARE_READ | FILE_SHARE_WRITE)), NULL, ((int32_t)(mode & file_open_mode_enum::auto_create) ? OPEN_ALWAYS : OPEN_EXISTING), FILE_ATTRIBUTE_NORMAL, NULL);
             if (!is_platform_handle_valid(out_file_handle)) {
@@ -418,6 +425,11 @@ namespace bq {
         int32_t write_file(const platform_file_handle& file_handle, const void* src_addr, size_t write_size, size_t& out_real_write_size)
         {
             out_real_write_size = 0;
+#if defined(BQ_UNIT_TEST)
+            if (test_inject::get_fault() == test_inject::fault_kind::enospc_on_write) {
+                return static_cast<int32_t>(ERROR_DISK_FULL);
+            }
+#endif
             const char* current_src = static_cast<const char*>(src_addr);
             size_t remaining = write_size;
 

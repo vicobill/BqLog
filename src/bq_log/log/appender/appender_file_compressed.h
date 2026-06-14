@@ -70,7 +70,7 @@ namespace bq {
     protected:
         virtual bool init_impl(const bq::property_value& config_obj) override;
 
-        virtual void log_impl(const log_entry_handle& handle) override;
+        virtual bool log_impl(const log_entry_handle& handle) override;
 
         virtual bool parse_exist_log_file(parse_file_context& context) override;
 

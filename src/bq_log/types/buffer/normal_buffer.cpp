@@ -31,8 +31,22 @@ namespace bq {
             mmap_result_ = create_memory_map(size, mmap_file_abs_path, auto_create);
         }
         if (mmap_result_ == create_memory_map_result::failed) {
+#if defined(BQ_UNIT_TEST)
+            if (bq::platform::test_inject::get_normal_buffer_alloc_fail()) {
+                // Simulate "mmap fails AND heap fails" (e.g. ENOSPC + OOM together).
+                // Leave buffer_data_ null and buffer_size_ zero so callers that do
+                // `data() + offset` placement-new can detect via is_valid() and
+                // bail out before segfaulting.
+                buffer_data_ = nullptr;
+                buffer_size_ = 0;
+                return;
+            }
+#endif
             buffer_data_ = bq::platform::aligned_alloc(BQ_CACHE_LINE_SIZE, size);
-            buffer_size_ = size;
+            if (buffer_data_ != nullptr) {
+                buffer_size_ = size;
+            }
+            // else: leave buffer_size_ at 0; is_valid() returns false; callers handle.
         } else {
             buffer_data_ = memory_map_handle_.get_mapped_data();
             buffer_size_ = memory_map_handle_.get_mapped_size();

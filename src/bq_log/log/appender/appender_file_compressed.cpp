@@ -244,15 +244,17 @@ namespace bq {
         return bytes_len > 1 ? (bytes_len - 1) : bytes_len;
     }
 
-    void appender_file_compressed::log_impl(const log_entry_handle& handle)
+    bool appender_file_compressed::log_impl(const log_entry_handle& handle)
     {
-        appender_file_binary::log_impl(handle);
+        if (!appender_file_base::log_impl(handle)) {
+            return false;
+        }
 
         uint32_t format_data_len = handle.get_log_head().log_format_data_len;
         const char* format_data_ptr = handle.get_format_string_data();
         if ((const uint8_t*)format_data_ptr + format_data_len > handle.get_log_args_data()) {
             bq::util::log_device_console(bq::log_level::error, "appender_file_compressed::log_impl invalid format data length:%" PRIu32, format_data_len);
-            return;
+            return false;
         }
         uint64_t fmt_hash = handle.get_log_head().format_hash;
         if (!fmt_hash) {
@@ -502,5 +504,6 @@ namespace bq {
             return_write_cache(write_handle);
         }
         mark_write_finished();
+        return true;
     }
 }

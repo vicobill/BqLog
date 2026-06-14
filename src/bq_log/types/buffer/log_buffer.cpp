@@ -855,7 +855,6 @@ namespace bq {
             if ((config_.policy == log_memory_policy::auto_expand_when_full
                     || config_.policy == log_memory_policy::block_when_full)
                 && parent_result.result == enum_buffer_result_code::err_not_enough_space) {
-
                 parent_result.result = enum_buffer_result_code::err_wait_and_retry;
             }
             return parent_result;
@@ -903,18 +902,73 @@ namespace bq {
             bq::platform::scoped_spin_lock_write_crazy w_lock(temprorary_oversize_buffer_.array_lock_);
             temprorary_oversize_buffer_.buffers_array_.emplace_back(bq::make_unique<oversize_buffer_obj_def>(default_buffer_size, abs_recovery_file_path, true));
             auto& new_buffer = *(temprorary_oversize_buffer_.buffers_array_.end() - 1);
-            new_buffer->buffer_lock_.read_lock();
-            auto& oversize_buffer_context = new_buffer->buffer_.get_misc_data<context_head>();
-            oversize_buffer_context.version_ = version_;
-            oversize_buffer_context.is_thread_finished_ = false;
-            oversize_buffer_context.seq_ = UINT32_MAX;
-            oversize_buffer_context.is_external_ref_ = true;
-            oversize_buffer_context.set_tls_info(&tls_buffer);
-            over_size_handle = new_buffer->buffer_.alloc_write_chunk(size + static_cast<uint32_t>(sizeof(context_head)));
-            assert(enum_buffer_result_code::success == over_size_handle.result && "New created oversize buffer shouldn't fail when allocating");
-            new_buffer->last_used_epoch_ms_ = current_epoch_ms;
-            tls_buffer.oversize_target_buffer_ = new_buffer.operator->();
+            // Defensive: if the oversize_buffer's mmap failed AND its heap fallback
+            // also returned null (real OOM, or test_inject::set_normal_buffer_alloc_fail),
+            // its data() is null. Calling alloc_write_chunk would dereference a null
+            // siso_ring_buffer base and segv. Bail out before touching the buffer.
+            if (!new_buffer->buffer_.is_valid()) {
+                temprorary_oversize_buffer_.buffers_array_.pop_back();
+                // over_size_handle.result stays != success → falls through to the
+                // unified failure path below.
+            } else {
+                new_buffer->buffer_lock_.read_lock();
+                auto& oversize_buffer_context = new_buffer->buffer_.get_misc_data<context_head>();
+                oversize_buffer_context.version_ = version_;
+                oversize_buffer_context.is_thread_finished_ = false;
+                oversize_buffer_context.seq_ = UINT32_MAX;
+                oversize_buffer_context.is_external_ref_ = true;
+                oversize_buffer_context.set_tls_info(&tls_buffer);
+                over_size_handle = new_buffer->buffer_.alloc_write_chunk(size + static_cast<uint32_t>(sizeof(context_head)));
+                if (enum_buffer_result_code::success == over_size_handle.result) {
+                    new_buffer->last_used_epoch_ms_ = current_epoch_ms;
+                    tls_buffer.oversize_target_buffer_ = new_buffer.operator->();
+                } else {
+                    // Theoretically unreachable: a brand-new siso_ring_buffer sized at
+                    // (size << 1) should always fit `size + sizeof(context_head)`.
+                    // But never assert here in production - earlier this was an
+                    // assert(success) that abort()ed when oversize_buffer's heap
+                    // fallback gave a degenerate buffer. Keep the bail-out path and
+                    // let the producer drop the entry instead.
+                    new_buffer->buffer_lock_.read_unlock();
+                    temprorary_oversize_buffer_.buffers_array_.pop_back();
+                }
+            }
         }
+
+        if (enum_buffer_result_code::success != over_size_handle.result) {
+            // Both "find existing" and "alloc new" failed. Most likely cause:
+            // need_recovery=true and the recovery mmap file could not be created
+            // because the disk is full (or some other unrecoverable IO error).
+            //
+            // The lp_buffer parent slot is already populated with a real
+            // version/seq/tls_info pointing at this tls_buffer. We must commit
+            // it (otherwise the lp_buffer cursor is stuck), but the reader must
+            // NOT later try to read an oversize payload that doesn't exist.
+            // Two surgical adjustments make this clean:
+            //   1. Bump version_ on the parent so verify_context() classifies it
+            //      as version_invalid - the reader returns the chunk and skips
+            //      it without ever calling deregister_seq() or
+            //      rt_read_oversize_chunk().
+            //   2. Roll back the write_seq we already incremented; the next alloc
+            //      from this tls thread reuses the same seq value. The reader's
+            //      current_read_seq_ is NEVER advanced for this entry (because it
+            //      was version_invalid), so write/read seqs stay aligned.
+            // is_external_ref_ no longer matters - the version_invalid branch in
+            // rt_read_from_lp_buffer (case version_invalid) goes straight to
+            // return_read_chunk without inspecting it.
+            //
+            // Return err_io_failure_drop (NOT err_not_enough_space) so the upper
+            // layer (__api_log_write_begin) drops this entry immediately and
+            // never enters the wait_and_retry spin loop. Disk-full is not a
+            // back-pressure scenario - waiting is futile.
+            --tls_buffer.wt_data_.current_write_seq_;
+            parent_context->version_ = static_cast<uint16_t>(version_ + 1);
+            lp_buffer_.commit_write_chunk(parent_result);
+            log_buffer_write_handle fail;
+            fail.result = enum_buffer_result_code::err_io_failure_drop;
+            return fail;
+        }
+
         auto* oversize_context = reinterpret_cast<context_head*>(over_size_handle.data_addr);
         oversize_context->version_ = version_;
         oversize_context->is_thread_finished_ = false;

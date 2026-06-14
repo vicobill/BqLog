@@ -227,20 +227,32 @@ namespace bq {
         appender_file_base::on_appender_file_recovery_end();
     }
 
-    void appender_file_binary::on_log_item_recovery_begin(bq::log_entry_handle& read_handle)
+    bool appender_file_binary::on_log_item_recovery_begin(bq::log_entry_handle& read_handle)
     {
-        appender_file_base::on_log_item_recovery_begin(read_handle);
+        if (!appender_file_base::on_log_item_recovery_begin(read_handle)) {
+            // file_ is closed (disk full / refresh failed). Skipping
+            // append_new_segment is critical: it would otherwise call
+            // direct_write() / read_to_next_segment() on an invalid file_,
+            // segfault on *nullptr in platform_handle(), and silently regenerate
+            // xor_key_blob_ in memory without persisting the AES key header -
+            // making any future ciphertext undecryptable.
+            return false;
+        }
         append_new_segment(appender_segment_type::recovery_by_log_buffer);
+        return true;
     }
     void appender_file_binary::on_log_item_recovery_end()
     {
         appender_file_base::on_log_item_recovery_end();
     }
 
-    void appender_file_binary::on_log_item_new_begin(bq::log_entry_handle& read_handle)
+    bool appender_file_binary::on_log_item_new_begin(bq::log_entry_handle& read_handle)
     {
-        appender_file_base::on_log_item_new_begin(read_handle);
+        if (!appender_file_base::on_log_item_new_begin(read_handle)) {
+            return false;
+        }
         append_new_segment(appender_segment_type::normal);
+        return true;
     }
 
     appender_file_base::read_with_cache_handle appender_file_binary::read_with_cache(size_t size)
