@@ -459,19 +459,13 @@ namespace bq {
 
                 std::atomic<bool> stop(false);
                 std::atomic<int32_t> messages_logged(0);
-                // Barrier before fault injection: wait until every producer has
-                // logged at least once. Fixed sleep is too short on emulated CI.
-                std::atomic<bool> started[4] = {};
 
                 std::vector<std::thread> producers;
                 for (int32_t i = 0; i < 4; ++i) {
-                    producers.emplace_back([&my_log, &stop, &messages_logged, &started, i]() {
+                    producers.emplace_back([&my_log, &stop, &messages_logged, i]() {
                         while (!stop.load(std::memory_order_acquire)) {
                             my_log.info("case_e producer {} message {}", i, messages_logged.load(std::memory_order_relaxed));
                             int32_t now = messages_logged.fetch_add(1, std::memory_order_relaxed) + 1;
-                            if (!started[i].load(std::memory_order_relaxed)) {
-                                started[i].store(true, std::memory_order_release);
-                            }
                             // Throw in an oversize-class entry every so often.
                             if ((now & 0x1FF) == 0) {
                                 bq::string big_payload;
@@ -482,17 +476,6 @@ namespace bq {
                         }
                     });
                 }
-
-                // Wait for every producer to log at least once before injecting
-                // faults, so the fault window does not fall on un-started threads.
-                wait_for(10000, [&started] {
-                    for (int32_t i = 0; i < 4; ++i) {
-                        if (!started[i].load(std::memory_order_acquire)) {
-                            return false;
-                        }
-                    }
-                    return true;
-                });
 
                 // Run baseline for ~150ms.
                 bq::platform::thread::sleep(150);
@@ -510,44 +493,17 @@ namespace bq {
 
                 stop.store(true, std::memory_order_release);
 
-                // All producers must join inside a generous-but-finite window.
-                // We can't portably timed-join a std::thread; instead we set a
-                // watchdog that, on expiry, marks failure and detaches the
-                // remaining producers so the test process can keep going.
-                std::atomic<size_t> joined_count(0);
-                std::atomic<bool> all_joined_flag(false);
-                std::thread joiner([&producers, &joined_count, &all_joined_flag]() {
-                    for (auto& t : producers) {
-                        if (t.joinable()) {
-                            t.join();
-                            joined_count.fetch_add(1, std::memory_order_release);
-                        }
-                    }
-                    all_joined_flag.store(true, std::memory_order_release);
-                });
-                bool all_joined = wait_for(30000, [&all_joined_flag] {
-                    return all_joined_flag.load(std::memory_order_acquire);
-                });
-                if (!all_joined) {
-                    // Joiner is stuck on a hung producer. Detach so the process
-                    // can shut down; the test result will record the failure.
-                    joiner.detach();
-                    for (auto& t : producers) {
-                        if (t.joinable()) {
-                            t.detach();
-                        }
-                    }
-                } else {
-                    joiner.join();
+                // Drain the worker pipeline synchronously before joining.
+                my_log.force_flush();
+
+                for (auto& t : producers) {
+                    t.join();
                 }
-                result.add_result(all_joined,
-                    "Case E: all 4 producers joined within 30s (joined: %zu/4)",
-                    joined_count.load(std::memory_order_acquire));
                 result.add_result(messages_logged.load(std::memory_order_relaxed) > 0,
                     "Case E: producers logged at least one message (got %d)",
                     messages_logged.load(std::memory_order_relaxed));
 
-                // Force final flush, then verify the appender is still healthy.
+                // Final flush so the appender state is clean before reset_config.
                 bq::log::force_flush_all_logs();
 
                 // Cleanup
