@@ -93,6 +93,27 @@ namespace bq {
             }
         };
 
+        // Drain so ASan / LSan does not report leaks at process exit.
+        //
+        // log_buffer's per-producer-thread bookkeeping (log_tls_buffer_info and
+        // its destruction_mark) is freed only by the consumer side, inside
+        // log_buffer::deregister_seq when it sees the producer's
+        // is_thread_finished_ marker. The full bq::log pipeline has a worker
+        // thread doing this. Cases A / B / D here run a bare log_buffer with a
+        // single producer and no consumer, so we drain manually before the
+        // buffer dies.
+        static void drain_buffer_until_empty(bq::log_buffer& buf)
+        {
+            while (true) {
+                auto handle = buf.read_chunk();
+                bool empty = (handle.result == bq::enum_buffer_result_code::err_empty_log_buffer);
+                buf.return_read_chunk(handle);
+                if (empty) {
+                    break;
+                }
+            }
+        }
+
         class test_disk_full : public test_base {
         private:
             static void wipe_log_state(const char* log_name)
@@ -162,6 +183,9 @@ namespace bq {
                     return;
                 }
                 producer.join();
+                // Producer-only: no consumer thread will free the per-thread
+                // TLS state, so drain manually. See drain_buffer_until_empty.
+                drain_buffer_until_empty(buf);
                 // Under "disk-full BUT memory available", normal_buffer falls back
                 // to heap on mmap failure - the alloc returns success and the log
                 // entry just lives in RAM (no recovery to disk). That's the
@@ -228,6 +252,8 @@ namespace bq {
                     return;
                 }
                 producer.join();
+                // Producer-only: drain manually, see drain_buffer_until_empty.
+                drain_buffer_until_empty(buf);
                 result.add_result(observed_result == bq::enum_buffer_result_code::err_io_failure_drop,
                     "Case B: oversize alloc on OOM returned err_io_failure_drop (got %d)", (int32_t)observed_result);
             }
@@ -400,6 +426,8 @@ namespace bq {
                     return;
                 }
                 producer.join();
+                // Producer-only: drain manually, see drain_buffer_until_empty.
+                drain_buffer_until_empty(buf);
                 result.add_result(observed_result == bq::enum_buffer_result_code::success,
                     "Case D: block-mode normal alloc returned success (got %d)", (int32_t)observed_result);
             }
