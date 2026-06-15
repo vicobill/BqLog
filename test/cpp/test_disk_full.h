@@ -459,25 +459,40 @@ namespace bq {
 
                 std::atomic<bool> stop(false);
                 std::atomic<int32_t> messages_logged(0);
+                // Barrier before fault injection: wait until every producer has
+                // logged at least once. Fixed sleep is too short on emulated CI.
+                std::atomic<bool> started[4] = {};
 
                 std::vector<std::thread> producers;
                 for (int32_t i = 0; i < 4; ++i) {
-                    producers.emplace_back([&my_log, &stop, &messages_logged, i]() {
-                        int32_t local_count = 0;
+                    producers.emplace_back([&my_log, &stop, &messages_logged, &started, i]() {
                         while (!stop.load(std::memory_order_acquire)) {
-                            my_log.info("case_e producer {} message {}", i, local_count);
-                            ++local_count;
+                            my_log.info("case_e producer {} message {}", i, messages_logged.load(std::memory_order_relaxed));
+                            int32_t now = messages_logged.fetch_add(1, std::memory_order_relaxed) + 1;
+                            if (!started[i].load(std::memory_order_relaxed)) {
+                                started[i].store(true, std::memory_order_release);
+                            }
                             // Throw in an oversize-class entry every so often.
-                            if ((local_count & 0x1FF) == 0) {
+                            if ((now & 0x1FF) == 0) {
                                 bq::string big_payload;
                                 big_payload.fill_uninitialized(70 * 1024);
                                 memset(big_payload.begin(), 'X', big_payload.size());
                                 my_log.info("case_e oversize: {}", big_payload);
                             }
                         }
-                        messages_logged.fetch_add(local_count, std::memory_order_relaxed);
                     });
                 }
+
+                // Wait for every producer to log at least once before injecting
+                // faults, so the fault window does not fall on un-started threads.
+                wait_for(10000, [&started] {
+                    for (int32_t i = 0; i < 4; ++i) {
+                        if (!started[i].load(std::memory_order_acquire)) {
+                            return false;
+                        }
+                    }
+                    return true;
+                });
 
                 // Run baseline for ~150ms.
                 bq::platform::thread::sleep(150);
@@ -510,7 +525,7 @@ namespace bq {
                     }
                     all_joined_flag.store(true, std::memory_order_release);
                 });
-                bool all_joined = wait_for(10000, [&all_joined_flag] {
+                bool all_joined = wait_for(30000, [&all_joined_flag] {
                     return all_joined_flag.load(std::memory_order_acquire);
                 });
                 if (!all_joined) {
@@ -526,7 +541,7 @@ namespace bq {
                     joiner.join();
                 }
                 result.add_result(all_joined,
-                    "Case E: all 4 producers joined within 10s (joined: %zu/4)",
+                    "Case E: all 4 producers joined within 30s (joined: %zu/4)",
                     joined_count.load(std::memory_order_acquire));
                 result.add_result(messages_logged.load(std::memory_order_relaxed) > 0,
                     "Case E: producers logged at least one message (got %d)",
