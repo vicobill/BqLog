@@ -1284,6 +1284,7 @@ namespace bq {
                     || oversize_buffer_context.is_external_ref_ != true
                     || !is_version_valid(oversize_buffer_context.version_)) {
                     bq::util::log_device_console(bq::log_level::warning, "remove invalid mmap file when recovery:%s, invalid context", full_path.c_str());
+                    recovery_buffer.reset();
                     bq::file_manager::remove_file_or_dir(full_path);
                 } else {
                     temprorary_oversize_buffer_.buffers_array_.emplace_back(bq::move(recovery_buffer));

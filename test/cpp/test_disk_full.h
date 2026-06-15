@@ -95,11 +95,9 @@ namespace bq {
 
         class test_disk_full : public test_base {
         private:
-            // Helper: drop any leftover bqlog_mmap state from a prior test run /
-            // a prior case in this group, so cases don't see each other's files.
-            static void wipe_log_state()
+            static void wipe_log_state(const char* log_name)
             {
-                bq::file_manager::remove_file_or_dir(TO_ABSOLUTE_PATH("bqlog_mmap", 0));
+                bq::file_manager::remove_file_or_dir(TO_ABSOLUTE_PATH(bq::string("bqlog_mmap/mmap_") + log_name, 0));
                 bq::file_manager::remove_file_or_dir(TO_ABSOLUTE_PATH("disk_full_test", 0));
             }
 
@@ -113,7 +111,7 @@ namespace bq {
             void case_a_oversize_no_hang(test_result& result)
             {
                 test_output_dynamic(bq::log_level::info, "[disk_full] Case A: oversize alloc must not hang under ENOSPC...\n");
-                wipe_log_state();
+                wipe_log_state("disk_full_case_a");
                 scoped_fault_injection fault_guard;
 
                 log_buffer_config config;
@@ -127,6 +125,12 @@ namespace bq {
                 bq::log_buffer buf(config);
 
                 // Inject ENOSPC against all bqlog_mmap files (covers oversize mmap).
+                // The forced open() failure makes the library (correctly) log
+                // "open_or_create_file failed" / "use memory instead of mmap file"
+                // at error/warning level - that is the exact path under test, so we
+                // silence the console for the injection window and restore the test
+                // default (warning) right after, to keep the output clean.
+                bq::util::set_log_device_console_min_level(bq::log_level::fatal);
                 bq::platform::test_inject::set_path_filter("bqlog_mmap");
                 bq::platform::test_inject::set_fault(bq::platform::test_inject::fault_kind::enospc_on_open);
 
@@ -146,6 +150,9 @@ namespace bq {
                 bool finished = wait_for(5000, [&alloc_done] {
                     return alloc_done.load(std::memory_order_acquire);
                 });
+                // Producer is done logging by the time alloc_done flips, so it is
+                // safe to restore console verbosity here.
+                bq::util::set_log_device_console_min_level(bq::log_level::warning);
                 result.add_result(finished, "Case A: oversize alloc returned within 5s (no hang)");
 
                 if (!finished) {
@@ -176,7 +183,7 @@ namespace bq {
             void case_b_oversize_oom_no_crash(test_result& result)
             {
                 test_output_dynamic(bq::log_level::info, "[disk_full] Case B: oversize buffer creation failure must not crash...\n");
-                wipe_log_state();
+                wipe_log_state("disk_full_case_b");
                 scoped_fault_injection fault_guard;
 
                 log_buffer_config config;
@@ -193,6 +200,10 @@ namespace bq {
                 // built normally), force the NEXT normal_buffer to fail on heap
                 // fallback. Combined with ENOSPC on open, this simulates a
                 // "disk full + OOM" fault during oversize_buffer creation.
+                // Same expected-failure logging as Case A (here mmap open AND heap
+                // fallback both fail by design); silence the console for the
+                // injection window and restore the default afterwards.
+                bq::util::set_log_device_console_min_level(bq::log_level::fatal);
                 bq::platform::test_inject::set_path_filter("bqlog_mmap");
                 bq::platform::test_inject::set_fault(bq::platform::test_inject::fault_kind::enospc_on_open);
                 bq::platform::test_inject::set_normal_buffer_alloc_fail(true);
@@ -210,6 +221,7 @@ namespace bq {
                 bool finished = wait_for(5000, [&alloc_done] {
                     return alloc_done.load(std::memory_order_acquire);
                 });
+                bq::util::set_log_device_console_min_level(bq::log_level::warning);
                 result.add_result(finished, "Case B: oversize alloc on OOM returned within 5s (no hang)");
                 if (!finished) {
                     producer.detach();
@@ -225,7 +237,7 @@ namespace bq {
             void case_c_appender_no_index_drift(test_result& result)
             {
                 test_output_dynamic(bq::log_level::info, "[disk_full] Case C: appender must not drift max_index under ENOSPC...\n");
-                wipe_log_state();
+                wipe_log_state("disk_full_case_c_log");
                 scoped_fault_injection fault_guard;
 
                 const bq::string out_dir = TO_ABSOLUTE_PATH("disk_full_test", 0);
@@ -356,7 +368,7 @@ namespace bq {
             void case_d_block_mode_still_works(test_result& result)
             {
                 test_output_dynamic(bq::log_level::info, "[disk_full] Case D: block_when_full mode still works correctly...\n");
-                wipe_log_state();
+                wipe_log_state("disk_full_case_d");
                 scoped_fault_injection fault_guard;
 
                 // No fault injected. Just stand up a tiny block-mode log_buffer
@@ -398,7 +410,7 @@ namespace bq {
             void case_e_end_to_end(test_result& result)
             {
                 test_output_dynamic(bq::log_level::info, "[disk_full] Case E: end-to-end stress with intermittent ENOSPC...\n");
-                wipe_log_state();
+                wipe_log_state("disk_full_case_e_log");
                 scoped_fault_injection fault_guard;
 
                 const bq::string out_dir = TO_ABSOLUTE_PATH("disk_full_test", 0);
@@ -601,7 +613,7 @@ namespace bq {
             void case_f_text_three_phase(test_result& result)
             {
                 test_output_dynamic(bq::log_level::info, "[disk_full] Case F: text three-phase sequential semantics...\n");
-                wipe_log_state();
+                wipe_log_state("disk_full_case_f_log");
                 scoped_fault_injection fault_guard;
 
                 const bq::string out_dir = TO_ABSOLUTE_PATH("disk_full_test", 0);
@@ -750,7 +762,7 @@ namespace bq {
             void case_g_encrypted_compressed_three_phase(test_result& result)
             {
                 test_output_dynamic(bq::log_level::info, "[disk_full] Case G: encrypted compressed three-phase...\n");
-                wipe_log_state();
+                wipe_log_state("disk_full_case_g_log");
                 scoped_fault_injection fault_guard;
 
                 const bq::string out_dir = TO_ABSOLUTE_PATH("disk_full_test", 0);
@@ -866,7 +878,7 @@ namespace bq {
                 case_e_end_to_end(result);
                 case_f_text_three_phase(result);
                 case_g_encrypted_compressed_three_phase(result);
-                wipe_log_state();
+                bq::file_manager::remove_file_or_dir(TO_ABSOLUTE_PATH("disk_full_test", 0));
                 return result;
             }
         };
