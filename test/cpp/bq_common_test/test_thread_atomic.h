@@ -11,6 +11,12 @@ namespace bq {
 
         constexpr uint32_t TEST_THREAD_ATOMIC_LOOP_TIMES = 1000000;
 
+#if defined(BQ_UNITE_TEST_LOW_PERFORMANCE_MODE)
+        constexpr uint32_t TEST_CONDITION_VARIABLE_PING_PONG_COUNT = 2;
+#else
+        constexpr uint32_t TEST_CONDITION_VARIABLE_PING_PONG_COUNT = 10;
+#endif
+
         class test_thread_exist : public bq::platform::thread {
         public:
             bq::platform::thread::thread_id thread_id_ = 0;
@@ -182,13 +188,20 @@ namespace bq {
             {
                 auto tid = bq::platform::thread::get_current_thread_id();
                 uint32_t error_count = 0;
-                for (uint32_t i = 0; i < 10000000; ++i) {
-                    if (i % 500000 == 0) {
+#if defined(BQ_UNITE_TEST_LOW_PERFORMANCE_MODE)
+                constexpr uint32_t LOOP_COUNT = 1000000;
+                constexpr uint32_t OUTPUT_INTERVAL = 50000;
+#else
+                constexpr uint32_t LOOP_COUNT = 10000000;
+                constexpr uint32_t OUTPUT_INTERVAL = 500000;
+#endif
+                for (uint32_t i = 0; i < LOOP_COUNT; ++i) {
+                    if (i % OUTPUT_INTERVAL == 0) {
                         test_output_dynamic_param(bq::log_level::info, "[spin_lock_rw_crazy_read] thread %" PRIu64 " before read_lock, iteration %" PRIu32 "\n", tid, i);
                     }
                     {
                         bq::platform::scoped_spin_lock_read_crazy lock(spin_lock_);
-                        if (i % 500000 == 0) {
+                        if (i % OUTPUT_INTERVAL == 0) {
                             test_output_dynamic_param(bq::log_level::info, "[spin_lock_rw_crazy_read] thread %" PRIu64 " got read_lock, iteration %" PRIu32 "\n", tid, i);
                         }
                         error_count += (counter_modify_by_write_ % 10 == 0) ? 0U : 1U;
@@ -203,7 +216,7 @@ namespace bq {
                         counter_modify_by_read_.add_fetch_relaxed(1);
                         counter_modify_by_read_.add_fetch_relaxed(1);
                     }
-                    if (i % 500000 == 0) {
+                    if (i % OUTPUT_INTERVAL == 0) {
                         test_output_dynamic_param(bq::log_level::info, "[spin_lock_rw_crazy_read] thread %" PRIu64 " released read_lock, iteration %" PRIu32 "\n", tid, i);
                     }
                     bq::platform::thread::yield();
@@ -328,7 +341,7 @@ namespace bq {
             virtual void run() override
             {
                 uint32_t current_value = 0;
-                while (i_ptr->i.load(platform::memory_order::acquire) < 10) {
+                while (i_ptr->i.load(platform::memory_order::acquire) < TEST_CONDITION_VARIABLE_PING_PONG_COUNT) {
                     mutex_ptr_->lock();
                     condition_variable_ptr_->wait(*mutex_ptr_, [&]() {
                         return (i_ptr->i.load(platform::memory_order::acquire) % 2) == 0;
@@ -603,7 +616,7 @@ namespace bq {
                     thread1.start();
 
                     uint32_t current_value = 1;
-                    while (i_value.i.load(platform::memory_order::acquire) < 10) {
+                    while (i_value.i.load(platform::memory_order::acquire) < TEST_CONDITION_VARIABLE_PING_PONG_COUNT) {
                         test_mutex.lock();
                         test_cond.wait(test_mutex, [&]() {
                             return (i_value.i.load(platform::memory_order::acquire) % 2) == 1;
