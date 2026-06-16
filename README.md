@@ -2,13 +2,13 @@
   <img src="banner.jpg" alt="BqLog Banner" width="100%">
 </p>
 
-# BqLog (BianQue Log) V 2.3.0
+# BqLog (BianQue Log) V 2.3.1
 
 **English** | [简体中文](./README_CHS.md)
 
 [![license](https://img.shields.io/badge/license-APACHE2.0-brightgreen.svg?style=flat)](LICENSE.txt)
-[![Release Version](https://img.shields.io/badge/release-2.3.0-red.svg)](https://github.com/Tencent/BqLog/releases)
-[![ChangeLog](https://img.shields.io/badge/📋_ChangeLog-v2.3.0-orange.svg?style=flat)](CHANGELOG.md)
+[![Release Version](https://img.shields.io/badge/release-2.3.1-red.svg)](https://github.com/Tencent/BqLog/releases)
+[![ChangeLog](https://img.shields.io/badge/📋_ChangeLog-v2.3.1-orange.svg?style=flat)](CHANGELOG.md)
 [![GitHub Stars](https://img.shields.io/github/stars/Tencent/BqLog?style=flat&logo=github)](https://github.com/Tencent/BqLog/stargazers)
 [![GitHub Forks](https://img.shields.io/github/forks/Tencent/BqLog?style=flat&logo=github)](https://github.com/Tencent/BqLog/network/members)
 [![GitHub Issues](https://img.shields.io/github/issues/Tencent/BqLog?style=flat&logo=github)](https://github.com/Tencent/BqLog/issues)
@@ -22,12 +22,12 @@
 
 ---
 
-[![Download](https://img.shields.io/badge/⬇_Download-Release_2.3.0-blue.svg?style=for-the-badge)](https://github.com/Tencent/BqLog/releases/tag/Release_2.3.0)
+[![Download](https://img.shields.io/badge/⬇_Download-Release_2.3.1-blue.svg?style=for-the-badge)](https://github.com/Tencent/BqLog/releases/tag/Release_2.3.1)
 
-## 📋 What's New in v2.3.0
+## 📋 What's New in v2.3.1
 
-- **OpenHarmony compatibility** — Replaced `0n` BigInt literals with `BigInt(0)` in the TypeScript wrapper. The same `bqlog` package on ohpm now works on **OpenHarmony 4.1+ (API 11+)** as well as HarmonyOS NEXT.
-- **Recovery hardening** — Strengthened data validation during recovery to detect malformed entries earlier and avoid potential crashes when consuming a corrupted ring buffer.
+- **Bug fix** — [Library crashes (SIGBUS) or hangs when the disk is full (#67)](https://github.com/Tencent/BqLog/issues/67).
+- **Bug fix** — [C# and Unity Editor `fetch_and_remove_console_buffer` occasionally crashes due to delegate being recycled by GC during native call (#66)](https://github.com/Tencent/BqLog/issues/66).
 
 > Full changelog → [CHANGELOG.md](CHANGELOG.md)
 

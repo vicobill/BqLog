@@ -2,13 +2,13 @@
   <img src="banner.jpg" alt="BqLog Banner" width="100%">
 </p>
 
-# BqLog (扁鹊日志) V 2.3.0
+# BqLog (扁鹊日志) V 2.3.1
 
 [English](./README.md) | **简体中文**
 
 [![license](https://img.shields.io/badge/license-APACHE2.0-brightgreen.svg?style=flat)](LICENSE.txt)
-[![Release Version](https://img.shields.io/badge/release-2.3.0-red.svg)](https://github.com/Tencent/BqLog/releases)
-[![ChangeLog](https://img.shields.io/badge/📋_更新日志-v2.3.0-orange.svg?style=flat)](CHANGELOG.md)
+[![Release Version](https://img.shields.io/badge/release-2.3.1-red.svg)](https://github.com/Tencent/BqLog/releases)
+[![ChangeLog](https://img.shields.io/badge/📋_更新日志-v2.3.1-orange.svg?style=flat)](CHANGELOG.md)
 [![GitHub Stars](https://img.shields.io/github/stars/Tencent/BqLog?style=flat&logo=github)](https://github.com/Tencent/BqLog/stargazers)
 [![GitHub Forks](https://img.shields.io/github/forks/Tencent/BqLog?style=flat&logo=github)](https://github.com/Tencent/BqLog/network/members)
 [![GitHub Issues](https://img.shields.io/github/issues/Tencent/BqLog?style=flat&logo=github)](https://github.com/Tencent/BqLog/issues)
@@ -22,12 +22,12 @@
 
 ---
 
-[![Download](https://img.shields.io/badge/⬇_下载-Release_2.3.0-blue.svg?style=for-the-badge)](https://github.com/Tencent/BqLog/releases/tag/Release_2.3.0)
+[![Download](https://img.shields.io/badge/⬇_下载-Release_2.3.1-blue.svg?style=for-the-badge)](https://github.com/Tencent/BqLog/releases/tag/Release_2.3.1)
 
-## 📋 v2.3.0 更新亮点
+## 📋 v2.3.1 更新亮点
 
-- **OpenHarmony 兼容性** — 把 TypeScript Wrapper 中的 `0n` BigInt 字面量替换为 `BigInt(0)`，ohpm 上同一个 `bqlog` 包现已可在 **OpenHarmony 4.1+（API 11+）** 和 HarmonyOS NEXT 上通用，无需单独发包。
-- **Recovery 加固** — 强化 Recovery 过程中的数据校验，能更早识别异常 entry，避免读取损坏 ring buffer 时潜在的 Crash。
+- **Bug 修复** — [磁盘满时崩溃 (SIGBUS) 或挂起 (#67)](https://github.com/Tencent/BqLog/issues/67)。
+- **Bug 修复** — [C# 和 Unity Editor `fetch_and_remove_console_buffer` 在 native 调用期间因 delegate 被 GC 回收偶发 Crash (#66)](https://github.com/Tencent/BqLog/issues/66)。
 
 > 完整更新日志 → [CHANGELOG.md](CHANGELOG.md)
 
