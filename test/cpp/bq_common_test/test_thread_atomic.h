@@ -609,6 +609,7 @@ namespace bq {
 
                 test_output_dynamic(bq::log_level::info, "spin_lock_rw_crazy test is finished, now begin the condition variable test, please wait...                \r");
                 {
+                    auto seg_start = bq::platform::high_performance_epoch_ms();
                     test_atomic_struct<uint32_t> i_value;
                     bq::platform::mutex test_mutex(false);
                     bq::platform::condition_variable test_cond;
@@ -628,6 +629,7 @@ namespace bq {
                         test_cond.notify_one();
                     }
                     thread1.join();
+                    test_output_dynamic_param(bq::log_level::info, "[diag] cv ping-pong segment finished, time cost:%" PRIu64 "ms                \n", bq::platform::high_performance_epoch_ms() - seg_start);
                 }
 
 #ifndef BQ_IN_GITHUB_ACTIONS
@@ -678,6 +680,7 @@ namespace bq {
 #endif
 
                 {
+                    auto seg_start = bq::platform::high_performance_epoch_ms();
                     // Restart Test
                     test_thread_restart t_restart;
                     t_restart.set_thread_name("Run1");
@@ -702,9 +705,11 @@ namespace bq {
                     if (tid1 == tid2) {
                         bq::util::log_device_console(bq::log_level::info, "Thread ID was reused by OS: %" PRIu64, (uint64_t)tid1);
                     }
+                    test_output_dynamic_param(bq::log_level::info, "[diag] thread restart segment finished, time cost:%" PRIu64 "ms                \n", bq::platform::high_performance_epoch_ms() - seg_start);
                 }
 
                 {
+                    auto seg_start = bq::platform::high_performance_epoch_ms();
                     // Detach Test
                     // We only verify that detach() sets the status to detached.
                     // We do NOT call start() again because it is designed to crash (assert).
@@ -720,18 +725,21 @@ namespace bq {
                         bq::platform::thread::sleep(50);
                     }
                     bq::platform::thread::sleep(100);
+                    test_output_dynamic_param(bq::log_level::info, "[diag] thread detach segment finished, time cost:%" PRIu64 "ms                \n", bq::platform::high_performance_epoch_ms() - seg_start);
                 }
 
                 test_output_dynamic(bq::log_level::info, "                                                                                                          \r");
 
 #ifndef BQ_WIN
                 {
+                    auto seg_start = bq::platform::high_performance_epoch_ms();
                     // thread name test
                     bq::string thread_name = "test_thread_1";
                     test_thread_name test_thread(thread_name, result);
                     test_thread.set_thread_name(thread_name);
                     test_thread.start();
                     test_thread.join();
+                    test_output_dynamic_param(bq::log_level::info, "[diag] thread name segment finished, time cost:%" PRIu64 "ms                \n", bq::platform::high_performance_epoch_ms() - seg_start);
                 }
 #endif // !BQ_WIN
 
