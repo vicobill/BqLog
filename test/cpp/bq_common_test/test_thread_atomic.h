@@ -743,6 +743,7 @@ namespace bq {
                 }
 #endif // !BQ_WIN
 
+                test_output_dynamic(bq::log_level::info, "[diag] test_thread_atomic::test about to return                \n");
                 return result;
             }
         };
