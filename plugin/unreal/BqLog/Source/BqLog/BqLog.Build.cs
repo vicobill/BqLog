@@ -61,7 +61,7 @@ public class BqLog : ModuleRules
     {
         string moduleDir = ModuleDirectory;
         string pluginRoot = Path.GetFullPath(Path.Combine(moduleDir, "..", ".."));
-        string thirdPartyRoot = Path.Combine(moduleDir, "..", "ThirdParty", "BqLog");
+        string thirdPartyRoot = Path.Combine(moduleDir, "ThirdParty", "BqLog");
         // Only proceed if this is the prebuilt variant (has Shared/ with platform binaries).
         // The source-compile variant also has ThirdParty/BqLog/ but with include/ and src/ instead.
         if (!Directory.Exists(Path.Combine(thirdPartyRoot, "Shared")))
