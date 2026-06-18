@@ -28,6 +28,7 @@
 
 - **Bug 修复** — [磁盘满时崩溃 (SIGBUS) 或挂起 (#67)](https://github.com/Tencent/BqLog/issues/67)。
 - **Bug 修复** — [C# 和 Unity Editor `fetch_and_remove_console_buffer` 在 native 调用期间因 delegate 被 GC 回收偶发 Crash (#66)](https://github.com/Tencent/BqLog/issues/66)。
+- **Unreal Engine** — 新增 UE 5.8 支持；Fab、预编译版与源码版现已覆盖 UE 5.0 – 5.8。
 
 > 完整更新日志 → [CHANGELOG.md](CHANGELOG.md)
 

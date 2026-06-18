@@ -3,6 +3,7 @@
 ## [v2.3.1] - 2026-06-16
 - **Bug fix**: [Library crashes (SIGBUS) or hangs when the disk is full #67](https://github.com/Tencent/BqLog/issues/67)
 - **Bug fix**: [\[C#\] \[\[Unity Editor\] fetch_and_remove_console_buffer occasionally crashes — delegate recycled by GC during native call #66](https://github.com/Tencent/BqLog/issues/66)
+- **Unreal Engine**: Added UE 5.8 support — Fab, Prebuilt, and Source distributions now cover UE 5.0 – 5.8.
 
 ## [v2.3.0] - 2026-06-03
 - **OpenHarmony compatibility**: Replaced ES2020 `0n` BigInt literals with `BigInt(0)` in the TypeScript wrapper so the same `bqlog` package on ohpm works on **OpenHarmony 4.1+ (API 11+)** as well as HarmonyOS NEXT — no separate package needed.

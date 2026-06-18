@@ -28,6 +28,7 @@
 
 - **Bug fix** — [Library crashes (SIGBUS) or hangs when the disk is full (#67)](https://github.com/Tencent/BqLog/issues/67).
 - **Bug fix** — [C# and Unity Editor `fetch_and_remove_console_buffer` occasionally crashes due to delegate being recycled by GC during native call (#66)](https://github.com/Tencent/BqLog/issues/66).
+- **Unreal Engine** — Added UE 5.8 support; Fab, Prebuilt, and Source distributions now cover UE 5.0 – 5.8.
 
 > Full changelog → [CHANGELOG.md](CHANGELOG.md)
 
