@@ -29,6 +29,7 @@
 - **Bug 修复** — [磁盘满时崩溃 (SIGBUS) 或挂起 (#67)](https://github.com/Tencent/BqLog/issues/67)。
 - **Bug 修复** — [C# 和 Unity Editor `fetch_and_remove_console_buffer` 在 native 调用期间因 delegate 被 GC 回收偶发 Crash (#66)](https://github.com/Tencent/BqLog/issues/66)。
 - **Unreal Engine** — 新增 UE 5.8 支持；Fab、预编译版与源码版现已覆盖 UE 5.0 – 5.8。
+- **Unreal Engine 6** — 当前 UE6 开发版可通过 GitHub Release 页面中的 `ue6` 源码版和预编译版插件使用。由于 Epic 官方的 Fab 引擎支持目前只到 UE 5.8，UE6 暂不能通过 Fab 安装。
 
 > 完整更新日志 → [CHANGELOG.md](CHANGELOG.md)
 
@@ -69,7 +70,7 @@
 
 | 平台 | 语言 |
 |------|------|
-| Windows 64-bit、macOS、Linux（含嵌入式）、iOS、Android、HarmonyOS、OpenHarmony、Unix（FreeBSD、NetBSD、OpenBSD、Solaris 等） | C++（C++11+）、Java / Kotlin、C#（Unity、.NET）、ArkTS / C++（HarmonyOS 与 OpenHarmony 同一份包）、JavaScript / TypeScript（Node.js）、Python 3.7+、Unreal Engine（UE4 & UE5） |
+| Windows 64-bit、macOS、Linux（含嵌入式）、iOS、Android、HarmonyOS、OpenHarmony、Unix（FreeBSD、NetBSD、OpenBSD、Solaris 等） | C++（C++11+）、Java / Kotlin、C#（Unity、.NET）、ArkTS / C++（HarmonyOS 与 OpenHarmony 同一份包）、JavaScript / TypeScript（Node.js）、Python 3.7+、Unreal Engine（UE4、UE5 与 UE6 开发版） |
 
 **硬件架构**：x86、x86_64、ARM32、ARM64
 **引入方式**：动态库、静态库、源代码
@@ -242,7 +243,7 @@ bq.log.force_flush_all_logs();
 5. Android 不再强制要求与 Java 一起使用。
 6. 移除 `is_in_sandbox` 配置，改用 `base_dir_type`；对 snapshot 增加过滤配置，支持每次启动新开日志文件。详见 [配置说明](docs/CONFIGURATION_CHS.md)。
 7. 支持高性能非对称混合加密，几乎无额外性能损耗，详见 [高级用法 — 加密](docs/ADVANCED_USAGE_CHS.md#6-日志加密和解密)。
-8. 提供 Unity、团结引擎、Unreal 引擎插件，方便在游戏引擎中使用；Unreal 插件同时已发布到 [Fab](https://www.fab.com/listings/386d1c78-e164-4e97-8b3e-e88cbf9b6acf) 商城（支持 UE4 与 UE5），提供 ConsoleAppender 对游戏引擎编辑器日志输出重定向，提供 Unreal 蓝图支持。详见 [游戏引擎集成指南](docs/ENGINE_INTEGRATION_CHS.md)。
+8. 提供 Unity、团结引擎、Unreal 引擎插件，方便在游戏引擎中使用；Unreal 插件支持 UE4、UE5 与当前 UE6 开发版，并提供 ConsoleAppender 日志重定向和蓝图支持。UE4/UE5 插件同时发布于 [Fab](https://www.fab.com/listings/386d1c78-e164-4e97-8b3e-e88cbf9b6acf)，UE6 插件目前仅通过 GitHub Releases 提供。详见 [游戏引擎集成指南](docs/ENGINE_INTEGRATION_CHS.md)。
 9. 仓库不再包含二进制产物，从 2.x 版本起请从 [Releases 页面](https://github.com/Tencent/BqLog/releases)下载对应平台和语言的二进制包。
 10. 单条日志长度不再受log.buffer_size限制。
 11. 可以精确手动设置时区。

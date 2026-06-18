@@ -43,13 +43,15 @@ Pick any one of the following ways to integrate.
 
 | Install method | Supported Unreal Engine versions |
 |---|---|
-| **Fab** | UE 4.22 – 4.27 and UE 5.0 – 5.8 (one dedicated zip per minor version, covering every supported version) |
-| **Prebuilt (GitHub Release)** | UE 4.25 – 4.27 (`ue4` zip) and UE 5.0 – 5.8 (`ue5` zip) |
-| **Source (GitHub Release)** | UE 4.25 – 4.27 (`ue4` zip) and UE 5.0 – 5.8 (`ue5` zip) |
+| **Fab** | UE 4.22 – 4.27 and UE 5.0 – 5.8 (one dedicated zip per officially available engine minor) |
+| **Prebuilt (GitHub Release)** | UE 4.25 – 4.27 (`ue4` zip), UE 5.0 – 5.8 (`ue5` zip), and current UE6 development builds (`ue6` zip) |
+| **Source (GitHub Release)** | UE 4.25 – 4.27 (`ue4` zip), UE 5.0 – 5.8 (`ue5` zip), and current UE6 development builds (`ue6` zip) |
 
 > **On UE 4.22 / 4.23 / 4.24?** Install through [Fab](https://www.fab.com/listings/386d1c78-e164-4e97-8b3e-e88cbf9b6acf) — the per-engine-version Fab zips account for `.uplugin` token differences in those older UE4 minors (older UBT revisions don't recognize `UncookedOnly` or `LinuxAArch64`). The single GitHub `ue4` zip targets UE 4.25+.
 >
 > **Mac / iOS on UE 4.22 and 4.23:** Due to Fab build-machine limitations, the Fab zips for UE 4.22 and 4.23 do **not** include Mac or iOS binaries. If you need Mac or iOS support on these two engine versions, please download the **Source** or **Prebuilt** package from the [GitHub Releases page](https://github.com/Tencent/BqLog/releases) and integrate it manually.
+>
+> **Using UE6?** Download the `ue6` Source or Prebuilt plugin manually from the [GitHub Releases page](https://github.com/Tencent/BqLog/releases). These packages currently use the same plugin implementation as UE5 and have been verified with current UE6 development builds. UE6 is still under development, so compatibility may be adjusted as the engine changes. Fab cannot distribute the UE6 package yet because Epic's official Fab engine support currently ends at UE 5.8.
 
 ### Integration
 
@@ -59,12 +61,18 @@ Pick any one of the following ways to integrate.
   - Recommended when you want the easiest installation and automatic updates through Fab.
 
 - **Prebuilt**
-  - Download `unreal_plugin_prebuilt_ue4_{version}` (for UE 4.25 – 4.27) or `unreal_plugin_prebuilt_ue5_{version}` (for UE 5.0 – 5.8) from the [Releases page](https://github.com/Tencent/BqLog/releases);
+  - Download `unreal_plugin_prebuilt_ue4_{version}` (UE 4.25 – 4.27), `unreal_plugin_prebuilt_ue5_{version}` (UE 5.0 – 5.8), or `unreal_plugin_prebuilt_ue6_{version}` (current UE6 development builds) from the [Releases page](https://github.com/Tencent/BqLog/releases);
   - Unzip to the `Plugins` directory of your game project.
 
 - **Source**
-  - Download `unreal_plugin_sources_ue4_{version}` (for UE 4.25 – 4.27) or `unreal_plugin_sources_ue5_{version}` (for UE 5.0 – 5.8) from the [Releases page](https://github.com/Tencent/BqLog/releases);
+  - Download `unreal_plugin_sources_ue4_{version}` (UE 4.25 – 4.27), `unreal_plugin_sources_ue5_{version}` (UE 5.0 – 5.8), or `unreal_plugin_sources_ue6_{version}` (current UE6 development builds) from the [Releases page](https://github.com/Tencent/BqLog/releases);
   - Unzip to the `Plugins` directory of your game project, to be recompiled by the engine.
+
+After extraction, verify that the plugin descriptor is at the following path. An extra nested `BqLog` directory will prevent Unreal from discovering the plugin correctly.
+
+```text
+<YourProject>/Plugins/BqLog/BqLog.uplugin
+```
 
 ### Enabling the Plugin
 
@@ -79,27 +87,38 @@ Add the BqLog plugin to your `.uproject` file's `Plugins` section:
 ]
 ```
 
-> Plugins placed in the `Plugins` directory are enabled by default, but explicitly declaring them in `.uproject` is recommended for clarity and version control.
+> Merge this entry into an existing `Plugins` array rather than adding a second `Plugins` key. Plugins placed in the project `Plugins` directory are usually discovered automatically, but explicitly declaring BqLog is recommended for clarity and version control. No `.uproject` `AdditionalDependencies` entry is required.
 
 ### Adding BqLog Module Dependency
 
-In your game module's `.Build.cs` file, add `"BqLog"` to the dependency list so that Unreal's build system links and includes BqLog correctly:
+In every game module that includes BqLog headers, add `"BqLog"` to that module's `.Build.cs`. If BqLog is used only by `.cpp` files, a private dependency is preferred:
 
 ```csharp
-PublicDependencyModuleNames.AddRange(new string[] {
-    "Core", "CoreUObject", "Engine",
-    "BqLog"   // ← Add this
+PrivateDependencyModuleNames.AddRange(new string[] {
+    "BqLog"
 });
 ```
 
-> The Blueprint node module `BqLogBPNodes` is an editor-only module bundled within the plugin. You do **not** need to add it to your module dependencies — it is automatically loaded by the editor when the plugin is enabled.
+Use `PublicDependencyModuleNames` instead if one of your module's public headers exposes BqLog types or includes a BqLog header:
+
+```csharp
+PublicDependencyModuleNames.Add("BqLog");
+```
+
+You can then include the Unreal adapter from C++:
+
+```cpp
+#include "BqLog.h"
+```
+
+> Do **not** add include directories manually. The `BqLog` module exports the required paths. The Blueprint node module `BqLogBPNodes` is editor-only and does **not** need to be added to your dependencies. After changing `.uproject` or `.Build.cs`, regenerate project files if your IDE does not refresh automatically, then rebuild the Editor target.
 
 ### 1) Support for `FName` / `FString` / `FText`
 
 In Unreal environment, BqLog has built-in adapters:
 
 - Automatically support `FString`, `FName`, `FText` as format string and parameters;
-- Compatible with UE4 and UE5.
+- Compatible with UE4, UE5, and current UE6 development builds.
 
 Example:
 

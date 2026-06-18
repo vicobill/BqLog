@@ -265,7 +265,7 @@ Refer to `/demo/python` directory under the repository.
 
 See the dedicated **[Game Engine Integration Guide](./ENGINE_INTEGRATION.md)** for:
 - Unity and Tuanjie Engine package import
-- Unreal Engine plugin via [Fab](https://www.fab.com/listings/386d1c78-e164-4e97-8b3e-e88cbf9b6acf), prebuilt, or source (UE4 & UE5)
+- Unreal Engine plugin via [Fab](https://www.fab.com/listings/386d1c78-e164-4e97-8b3e-e88cbf9b6acf), prebuilt, or source (UE4, UE5, and current UE6 development builds; UE6 is GitHub Release only)
 - `FString` / `FName` / `FText` support
 - Redirect BqLog output to Unreal's Output Log window
 - Blueprint usage

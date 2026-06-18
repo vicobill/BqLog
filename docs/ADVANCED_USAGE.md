@@ -357,7 +357,7 @@ void output(const bq::log& my_category_log)
 In Unreal environment, BqLog has built-in adapters:
 
 - Automatically support `FString`, `FName`, `FText` as format string and parameters;
-- Compatible with UE4 and UE5.
+- Compatible with UE4, UE5, and current UE6 development builds.
 
 Example:
 

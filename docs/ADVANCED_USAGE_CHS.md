@@ -321,7 +321,7 @@ void output(const bq::log& my_category_log)
 在 Unreal 环境中，BqLog 内置了适配器：
 
 - 自动支持 `FString`、`FName`、`FText` 作为 format 字符串和参数；
-- 兼容 UE4 与 UE5。
+- 兼容 UE4、UE5 与当前 UE6 开发版。
 
 示例：
 

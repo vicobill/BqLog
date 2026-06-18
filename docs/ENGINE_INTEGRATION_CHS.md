@@ -43,13 +43,15 @@ log.info("Hello from Unity! value:{}", 42);
 
 | 安装方式 | 支持的 Unreal Engine 版本 |
 |---|---|
-| **Fab** | UE 4.22 – 4.27 以及 UE 5.0 – 5.8（全版本支持，每个次版本都提供专用 zip） |
-| **预编译版（GitHub Release）** | UE 4.25 – 4.27（`ue4` 包）与 UE 5.0 – 5.8（`ue5` 包） |
-| **源码版（GitHub Release）** | UE 4.25 – 4.27（`ue4` 包）与 UE 5.0 – 5.8（`ue5` 包） |
+| **Fab** | UE 4.22 – 4.27 以及 UE 5.0 – 5.8（官方已提供的全部版本，每个次版本都有专用 zip） |
+| **预编译版（GitHub Release）** | UE 4.25 – 4.27（`ue4` 包）、UE 5.0 – 5.8（`ue5` 包）与当前 UE6 开发版（`ue6` 包） |
+| **源码版（GitHub Release）** | UE 4.25 – 4.27（`ue4` 包）、UE 5.0 – 5.8（`ue5` 包）与当前 UE6 开发版（`ue6` 包） |
 
 > **使用 UE 4.22 / 4.23 / 4.24？** 请通过 [Fab](https://www.fab.com/listings/386d1c78-e164-4e97-8b3e-e88cbf9b6acf) 安装——Fab 上每个引擎次版本的专用 zip 针对这些老 UE4 的 `.uplugin` 语法差异做了适配（旧版 UBT 不识别 `UncookedOnly` 或 `LinuxAArch64` 等标识符）。GitHub Release 上的通用 `ue4` 包只针对 UE 4.25+。
 >
 > **UE 4.22 与 4.23 的 Mac / iOS 支持：** 由于 Fab 构建机的限制，Fab 上针对 UE 4.22 与 4.23 的 zip **未包含** Mac 与 iOS 版本。如果在这两个引擎版本下需要 Mac 或 iOS 支持，请前往 [GitHub Releases 页面](https://github.com/Tencent/BqLog/releases) 下载 **源码版** 或 **预编译版** 手动引入。
+>
+> **使用 UE6？** 请从 [GitHub Releases 页面](https://github.com/Tencent/BqLog/releases)手动下载 `ue6` 源码版或预编译版插件。这些包目前与 UE5 使用相同的插件实现，并已在当前 UE6 开发版中验证可用。UE6 仍在开发，后续可能需要随引擎变化调整兼容性。由于 Epic 官方的 Fab 引擎支持目前只到 UE 5.8，Fab 暂时无法分发 UE6 插件。
 
 ### 集成方式
 
@@ -59,12 +61,18 @@ log.info("Hello from Unity! value:{}", 42);
   - 适合希望以最简方式安装并通过 Fab 自动获取更新的用户。
 
 - **预编译版（Prebuilt）**
-  - 从 [Releases 页面](https://github.com/Tencent/BqLog/releases) 下载 `unreal_plugin_prebuilt_ue4_{version}`（适用于 UE 4.25 – 4.27）或 `unreal_plugin_prebuilt_ue5_{version}`（适用于 UE 5.0 – 5.8）；
+  - 从 [Releases 页面](https://github.com/Tencent/BqLog/releases)下载 `unreal_plugin_prebuilt_ue4_{version}`（UE 4.25 – 4.27）、`unreal_plugin_prebuilt_ue5_{version}`（UE 5.0 – 5.8）或 `unreal_plugin_prebuilt_ue6_{version}`（当前 UE6 开发版）；
   - 解压到游戏项目的 `Plugins` 目录下。
 
 - **源码版（Source）**
-  - 从 [Releases 页面](https://github.com/Tencent/BqLog/releases) 下载 `unreal_plugin_sources_ue4_{version}`（适用于 UE 4.25 – 4.27）或 `unreal_plugin_sources_ue5_{version}`（适用于 UE 5.0 – 5.8）；
+  - 从 [Releases 页面](https://github.com/Tencent/BqLog/releases)下载 `unreal_plugin_sources_ue4_{version}`（UE 4.25 – 4.27）、`unreal_plugin_sources_ue5_{version}`（UE 5.0 – 5.8）或 `unreal_plugin_sources_ue6_{version}`（当前 UE6 开发版）；
   - 解压到游戏项目的 `Plugins` 目录下，由引擎进行二次编译。
+
+解压后请确认插件描述文件位于以下路径。多嵌套一层 `BqLog` 目录会导致 Unreal 无法正确发现插件。
+
+```text
+<你的项目>/Plugins/BqLog/BqLog.uplugin
+```
 
 ### 启用插件
 
@@ -79,27 +87,38 @@ log.info("Hello from Unity! value:{}", 42);
 ]
 ```
 
-> 放在 `Plugins` 目录下的插件默认会被启用，但在 `.uproject` 中显式声明是更规范的做法，便于版本管理和团队协作。
+> 如果 `.uproject` 已有 `Plugins` 数组，请把上述条目合并进去，不要再添加第二个 `Plugins` 键。项目 `Plugins` 目录中的插件通常会被自动发现，但仍建议显式声明 BqLog，便于版本管理和团队协作。不需要在 `.uproject` 的 `AdditionalDependencies` 中添加 BqLog。
 
 ### 添加 BqLog 模块依赖
 
-在你的游戏模块的 `.Build.cs` 文件中，将 `"BqLog"` 加入依赖列表，以便 Unreal 构建系统正确链接和包含 BqLog：
+每个需要包含 BqLog 头文件的游戏模块，都必须在自己的 `.Build.cs` 中添加 `"BqLog"`。如果只在 `.cpp` 文件中使用 BqLog，推荐添加为私有依赖：
 
 ```csharp
-PublicDependencyModuleNames.AddRange(new string[] {
-    "Core", "CoreUObject", "Engine",
-    "BqLog"   // ← 添加这一行
+PrivateDependencyModuleNames.AddRange(new string[] {
+    "BqLog"
 });
 ```
 
-> 蓝图节点模块 `BqLogBPNodes` 是插件内置的编辑器专用模块，**不需要**手动添加到你的模块依赖中——启用插件后编辑器会自动加载它。
+如果模块的公共头文件暴露了 BqLog 类型或包含了 BqLog 头文件，则应改为公共依赖：
+
+```csharp
+PublicDependencyModuleNames.Add("BqLog");
+```
+
+之后即可在 C++ 中包含 Unreal 适配器：
+
+```cpp
+#include "BqLog.h"
+```
+
+> **不要**手动添加 include 目录，`BqLog` 模块会导出所需路径。蓝图节点模块 `BqLogBPNodes` 是编辑器专用模块，也**不需要**加入依赖。修改 `.uproject` 或 `.Build.cs` 后，如果 IDE 没有自动刷新，请重新生成项目文件，然后重新编译 Editor Target。
 
 ### 1）对 `FName` / `FString` / `FText` 的支持
 
 在 Unreal 环境中，BqLog 内置了适配器：
 
 - 自动支持 `FString`、`FName`、`FText` 作为 format 字符串和参数；
-- 兼容 UE4 与 UE5。
+- 兼容 UE4、UE5 与当前 UE6 开发版。
 
 示例：
 
