@@ -10,8 +10,11 @@
  */
 #include "bq_common/platform/ios_misc.h"
 #if defined(BQ_IOS)
-#import <Foundation/Foundation.h>
-#import <UIKit/UIKit.h>
+#import <Foundation/NSArray.h>
+#import <Foundation/NSObjCRuntime.h>
+#import <Foundation/NSPathUtilities.h>
+#import <Foundation/NSString.h>
+#import <Foundation/NSThread.h>
 #include <pthread.h>
 #include <sys/time.h>
 #include <sys/types.h>

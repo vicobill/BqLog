@@ -11,7 +11,6 @@
 
 #include "bq_common/platform/mac_misc.h"
 #if defined(BQ_MAC)
-#import <Foundation/Foundation.h>
 #include <pthread.h>
 #include <sys/time.h>
 #include <sys/types.h>
