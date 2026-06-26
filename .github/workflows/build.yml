@@ -44,7 +44,7 @@ jobs:
         uses: actions/setup-java@v5
         with:
           java-version: '11'
-          distribution: 'adopt'
+          distribution: 'temurin'
 
       - name: Build for Windows
         run: |
@@ -68,7 +68,7 @@ jobs:
         uses: actions/setup-java@v5
         with:
           java-version: '11'
-          distribution: 'adopt'
+          distribution: 'temurin'
 
       - name: Build for Windows
         run: |
@@ -86,7 +86,7 @@ jobs:
         uses: actions/setup-java@v5
         with:
           java-version: '11'
-          distribution: 'adopt'
+          distribution: 'temurin'
 
       - name: Install MSYS2 (CLANG64)
         id: msys2
@@ -145,7 +145,7 @@ jobs:
         uses: actions/setup-java@v5
         with:
           java-version: '11'
-          distribution: 'adopt'
+          distribution: 'temurin'
 
       - name: Build Tools
         run: |
@@ -169,7 +169,7 @@ jobs:
         uses: actions/setup-java@v5
         with:
           java-version: '11'
-          distribution: 'adopt'
+          distribution: 'temurin'
 
       - name: Build for Windows
         run: |
@@ -193,7 +193,7 @@ jobs:
         uses: actions/setup-java@v5
         with:
           java-version: '11'
-          distribution: 'adopt'
+          distribution: 'temurin'
 
       - name: Build for Windows
         run: |
@@ -211,7 +211,7 @@ jobs:
         uses: actions/setup-java@v5
         with:
           java-version: '21'
-          distribution: 'adopt'
+          distribution: 'temurin'
 
       - name: Install MSYS2 (CLANGARM64)
         id: msys2
@@ -270,7 +270,7 @@ jobs:
         uses: actions/setup-java@v5
         with:
           java-version: '11'
-          distribution: 'adopt'
+          distribution: 'temurin'
 
       - name: Build Tools
         run: |
@@ -295,7 +295,7 @@ jobs:
         uses: actions/setup-java@v5
         with:
           java-version: '17'
-          distribution: 'adopt'
+          distribution: 'temurin'
 
       - name: Set up Android SDK (with NDK)
         id: setup-android
@@ -326,7 +326,7 @@ jobs:
         uses: actions/setup-java@v5
         with:
           java-version: '17'
-          distribution: 'adopt'
+          distribution: 'temurin'
 
       - name: Set up Android SDK (with NDK)
         id: setup-android
@@ -358,7 +358,7 @@ jobs:
         uses: actions/setup-java@v5
         with:
           java-version: '17'
-          distribution: 'adopt'
+          distribution: 'temurin'
 
       - name: Set up Android SDK (with NDK)
         id: setup-android
@@ -398,7 +398,7 @@ jobs:
         uses: actions/setup-java@v5
         with:
           java-version: '11'
-          distribution: 'adopt'
+          distribution: 'temurin'
 
       - name: Build for Linux
         run: |
@@ -423,7 +423,7 @@ jobs:
         uses: actions/setup-java@v5
         with:
           java-version: '11'
-          distribution: 'adopt'
+          distribution: 'temurin'
 
       - name: Build for Linux
         run: |
@@ -442,7 +442,7 @@ jobs:
         uses: actions/setup-java@v5
         with:
           java-version: '11'
-          distribution: 'adopt'
+          distribution: 'temurin'
 
       - name: Build for Linux
         run: |
@@ -469,7 +469,7 @@ jobs:
         uses: actions/setup-java@v5
         with:
           java-version: '11'
-          distribution: 'adopt'
+          distribution: 'temurin'
 
       - name: Build for Linux
         run: |
@@ -492,7 +492,7 @@ jobs:
         uses: actions/setup-java@v5
         with:
           java-version: '11'
-          distribution: 'adopt'
+          distribution: 'temurin'
 
       - name: Build for Linux
         run: |
@@ -517,7 +517,7 @@ jobs:
         uses: actions/setup-java@v5
         with:
           java-version: '11'
-          distribution: 'adopt'
+          distribution: 'temurin'
 
       - name: Build for Linux
         run: |
@@ -536,7 +536,7 @@ jobs:
         uses: actions/setup-java@v5
         with:
           java-version: '11'
-          distribution: 'adopt'
+          distribution: 'temurin'
 
       - name: Build for Linux
         run: |
@@ -563,7 +563,7 @@ jobs:
         uses: actions/setup-java@v5
         with:
           java-version: '11'
-          distribution: 'adopt'
+          distribution: 'temurin'
 
       - name: Build for Linux
         run: |
@@ -4003,7 +4003,7 @@ jobs:
         uses: actions/setup-java@v5
         with:
           java-version: '11'
-          distribution: 'adopt'
+          distribution: 'temurin'
 
       - name: Build for Java
         run: |
@@ -4057,7 +4057,7 @@ jobs:
         uses: actions/setup-java@v5
         with:
           java-version: '11'
-          distribution: 'adopt'
+          distribution: 'temurin'
 
       - name: Set up Node.js
         uses: actions/setup-node@v5
@@ -4092,7 +4092,7 @@ jobs:
         uses: actions/setup-java@v5
         with:
           java-version: '11'
-          distribution: 'adopt'
+          distribution: 'temurin'
 
       - name: Set up Node.js
         uses: actions/setup-node@v5
@@ -4121,7 +4121,7 @@ jobs:
         uses: actions/setup-java@v5
         with:
           java-version: '11'
-          distribution: 'adopt'
+          distribution: 'temurin'
 
       - name: Set up Node.js
         uses: actions/setup-node@v5
@@ -4156,7 +4156,7 @@ jobs:
         uses: actions/setup-java@v5
         with:
           java-version: '11'
-          distribution: 'adopt'
+          distribution: 'temurin'
 
       - name: Set up Node.js
         uses: actions/setup-node@v5
@@ -4186,7 +4186,7 @@ jobs:
         uses: actions/setup-java@v5
         with:
           java-version: '11'
-          distribution: 'adopt'
+          distribution: 'temurin'
 
       - name: Set up Node.js
         uses: actions/setup-node@v5
@@ -4222,7 +4222,7 @@ jobs:
         uses: actions/setup-java@v5
         with:
           java-version: '11'
-          distribution: 'adopt'
+          distribution: 'temurin'
 
       - name: Set up Node.js
         uses: actions/setup-node@v5
@@ -4252,7 +4252,7 @@ jobs:
         uses: actions/setup-java@v5
         with:
           java-version: '11'
-          distribution: 'adopt'
+          distribution: 'temurin'
 
       - name: Set up Node.js
         uses: actions/setup-node@v5
@@ -4287,7 +4287,7 @@ jobs:
         uses: actions/setup-java@v5
         with:
           java-version: '11'
-          distribution: 'adopt'
+          distribution: 'temurin'
 
       - name: Set up Node.js
         uses: actions/setup-node@v5
@@ -7238,7 +7238,7 @@ jobs:
         uses: actions/setup-java@v5
         with:
           java-version: '11'
-          distribution: 'adopt'
+          distribution: 'temurin'
 
       - name: Download all needed artifacts
         uses: actions/download-artifact@v8

@@ -239,7 +239,7 @@ jobs:
         uses: actions/setup-java@v5
         with:
           java-version: '11'
-          distribution: 'adopt'
+          distribution: 'temurin'
 
       - name: Install GDB(Attempt 1)
         continue-on-error: true
@@ -345,7 +345,7 @@ jobs:
         uses: actions/setup-java@v5
         with:
           java-version: '11'
-          distribution: 'adopt'
+          distribution: 'temurin'
 
       - name: Build for macOS
         env:
@@ -1738,7 +1738,7 @@ jobs:
         uses: actions/setup-java@v5
         with:
           java-version: '17'
-          distribution: 'adopt'
+          distribution: 'temurin'
 
       - id: setup-android
         uses: android-actions/setup-android@v4
@@ -1973,7 +1973,7 @@ jobs:
         uses: actions/setup-java@v5
         with:
           java-version: '11'
-          distribution: 'adopt'
+          distribution: 'temurin'
 
       - name: Test for macOS
         id: mac_run_tests
@@ -2041,7 +2041,7 @@ jobs:
         uses: actions/setup-java@v5
         with:
           java-version: '11'
-          distribution: 'adopt'
+          distribution: 'temurin'
 
       - name: Build for Linux
         id: linux_run_tests
@@ -2203,6 +2203,7 @@ jobs:
       - name: Install Mono (macOS)
         if: runner.os == 'macOS'
         run: |
+          brew untap aws/tap || true
           brew install mono
 
       - name: Install CMake

@@ -260,7 +260,7 @@ jobs:
         uses: actions/setup-java@v5
         with:
           java-version: '11'
-          distribution: 'adopt'
+          distribution: 'temurin'
 
       - name: Set version
         id: version
@@ -390,7 +390,7 @@ jobs:
         uses: actions/setup-java@v5
         with:
           java-version: '17'
-          distribution: 'adopt'
+          distribution: 'temurin'
 
       - name: Set version
         id: version
