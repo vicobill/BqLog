@@ -49,26 +49,28 @@ namespace bq {
         size_t alignment_offset = offset - get_real_map_offset(offset);
         size_t real_min_file_size = get_min_size_of_memory_map_file(offset, size);
 
-        DWORD file_size_high = 0;
-        DWORD file_size_low = GetFileSize(file_handle, &file_size_high);
-        if (INVALID_FILE_SIZE == file_size_low && NO_ERROR != GetLastError()) {
+        LARGE_INTEGER file_size;
+        if (!GetFileSizeEx(file_handle, &file_size)) {
             result.error_code_ = static_cast<int32_t>(GetLastError());
             bq::util::log_device_console(log_level::error, "create_memory_map GetFileSize failed, path:%s, error_code:%d", map_file.abs_file_path().c_str(), result.error_code_);
             return result;
         }
-        size_t current_file_size = ((size_t)file_size_high << 32) | (size_t)file_size_low;
-        if (current_file_size < real_min_file_size) {
-            size_t new_size = real_min_file_size;
-            LONG new_size_high = (LONG)(new_size >> 32);
-            LONG new_size_low = (LONG)(new_size & 0xFFFFFFFF);
-            if (INVALID_SET_FILE_POINTER == SetFilePointer(file_handle, new_size_low, &new_size_high, FILE_BEGIN) && NO_ERROR != GetLastError()) {
+        size_t current_file_size = static_cast<size_t>(file_size.QuadPart);
+        if (real_min_file_size > 0 && current_file_size <= real_min_file_size) {
+            FILE_ALLOCATION_INFO allocation_info;
+            allocation_info.AllocationSize.QuadPart = static_cast<LONGLONG>(real_min_file_size);
+            if (!SetFileInformationByHandle(file_handle, FileAllocationInfo, &allocation_info, sizeof(allocation_info))) {
                 result.error_code_ = static_cast<int32_t>(GetLastError());
-                bq::util::log_device_console(log_level::error, "create_memory_map SetFilePointer failed, path:%s, error_code:%d", map_file.abs_file_path().c_str(), result.error_code_);
+                bq::util::log_device_console(log_level::warning, "create_memory_map preallocate file failed, path:%s, error_code:%d", map_file.abs_file_path().c_str(), result.error_code_);
                 return result;
             }
-            if (!SetEndOfFile(file_handle)) {
+        }
+        if (current_file_size < real_min_file_size) {
+            FILE_END_OF_FILE_INFO eof_info;
+            eof_info.EndOfFile.QuadPart = static_cast<LONGLONG>(real_min_file_size);
+            if (!SetFileInformationByHandle(file_handle, FileEndOfFileInfo, &eof_info, sizeof(eof_info))) {
                 result.error_code_ = static_cast<int32_t>(GetLastError());
-                bq::util::log_device_console(log_level::error, "create_memory_map SetEndOfFile failed, path:%s, error_code:%d", map_file.abs_file_path().c_str(), result.error_code_);
+                bq::util::log_device_console(log_level::error, "create_memory_map set file size failed, path:%s, error_code:%d", map_file.abs_file_path().c_str(), result.error_code_);
                 return result;
             }
         }

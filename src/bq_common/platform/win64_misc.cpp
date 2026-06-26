@@ -470,7 +470,8 @@ namespace bq {
             default:
                 break;
             }
-            if (INVALID_SET_FILE_POINTER == SetFilePointer(file_handle, offset_low, &offset_high, opt_platform)) {
+            SetLastError(NO_ERROR);
+            if (INVALID_SET_FILE_POINTER == SetFilePointer(file_handle, offset_low, &offset_high, opt_platform) && NO_ERROR != GetLastError()) {
                 auto error_code = static_cast<int32_t>(GetLastError());
                 return error_code;
             }
@@ -512,13 +513,9 @@ namespace bq {
 
         int32_t truncate_file(const platform_file_handle& file_handle, size_t offset)
         {
-            LONG offset_low = (LONG)(static_cast<int64_t>(offset) & 0xFFFFFFFF);
-            LONG offset_high = (LONG)(static_cast<int64_t>(offset) >> 32);
-            if (INVALID_SET_FILE_POINTER == SetFilePointer(file_handle, offset_low, &offset_high, FILE_BEGIN)) {
-                auto error_code = static_cast<int32_t>(GetLastError());
-                return error_code;
-            }
-            if (!SetEndOfFile(file_handle)) {
+            FILE_END_OF_FILE_INFO eof_info;
+            eof_info.EndOfFile.QuadPart = static_cast<LONGLONG>(offset);
+            if (!SetFileInformationByHandle(file_handle, FileEndOfFileInfo, &eof_info, sizeof(eof_info))) {
                 auto error_code = static_cast<int32_t>(GetLastError());
                 return error_code;
             }

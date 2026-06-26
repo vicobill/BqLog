@@ -387,18 +387,29 @@ namespace bq {
     bool file_manager::truncate_file(const file_handle& handle, size_t offset)
     {
         auto truncate_errno = platform::truncate_file(handle.platform_handle(), offset);
-        bool result = (truncate_errno == 0);
         if (truncate_errno != 0) {
+            file_manager_file_error_no_ = truncate_errno;
             bq::util::log_device_console(bq::log_level::error, "truncate file failed, file:\"%s\", error code:%d", handle.file_path_.c_str(), truncate_errno);
+            return false;
         }
+
         size_t current_file_size = 0;
-        int32_t get_file_size_error_no = bq::platform::get_file_size(handle.platform_handle(), current_file_size);
-        if (get_file_size_error_no != 0) {
-            current_file_size = offset;
+        int32_t get_file_size_errno = platform::get_file_size(handle.platform_handle(), current_file_size);
+        if (get_file_size_errno != 0) {
+            file_manager_file_error_no_ = get_file_size_errno;
+            bq::util::log_device_console(bq::log_level::error, "truncate file size check failed, file:\"%s\", error code:%d", handle.file_path_.c_str(), get_file_size_errno);
+            return false;
         }
-        platform::flush_file(handle.platform_handle());
-        seek(handle, seek_option::end, 0);
-        return result;
+        if (current_file_size != offset) {
+            file_manager_file_error_no_ = EIO;
+            bq::util::log_device_console(bq::log_level::error, "truncate file size mismatch, file:\"%s\", expected:%" PRIu64 ", actual:%" PRIu64 "",
+                handle.file_path_.c_str(), static_cast<uint64_t>(offset), static_cast<uint64_t>(current_file_size));
+            return false;
+        }
+        if (!seek(handle, seek_option::end, 0)) {
+            return false;
+        }
+        return true;
     }
 
     size_t file_manager::read_file(const file_handle& handle, void* dest_data, size_t length, seek_option opt /* = seek_option::current*/, int64_t seek_offset /* = 0*/)
