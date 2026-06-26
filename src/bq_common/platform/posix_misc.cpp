@@ -470,14 +470,15 @@ namespace bq {
         {
             out_real_read_size = 0;
             size_t max_size_pertime = static_cast<size_t>(SSIZE_MAX);
-            size_t max_read_size_current = 0;
+            char* current_target = static_cast<char*>(target_addr);
             while (out_real_read_size < read_size) {
-                size_t need_read_size_this_time = bq::min_value(max_size_pertime, read_size - max_read_size_current);
-                ssize_t out_size = read(file_handle, target_addr, need_read_size_this_time);
+                size_t need_read_size_this_time = bq::min_value(max_size_pertime, read_size - out_real_read_size);
+                ssize_t out_size = read(file_handle, current_target, need_read_size_this_time);
                 if (out_size < 0) {
                     return errno;
                 }
                 out_real_read_size += static_cast<size_t>(out_size);
+                current_target += out_size;
                 if (out_size < static_cast<ssize_t>(need_read_size_this_time)) {
                     return 0;
                 }

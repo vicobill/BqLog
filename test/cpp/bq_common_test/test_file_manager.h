@@ -7,6 +7,29 @@ namespace bq {
     namespace test {
         const int32_t base_dir_type = 1;
 
+        template <bool>
+        struct test_file_manager_large_file_truncate {
+            static void test(test_result&, bq::file_manager&) {}
+        };
+
+        template <>
+        struct test_file_manager_large_file_truncate<true> {
+            static void test(test_result& result, bq::file_manager& file_manager)
+            {
+                file_manager.remove_file_or_dir(TO_ABSOLUTE_PATH("cc/bb/ff/truncate/large.bin", base_dir_type));
+                auto handle = file_manager.open_file(TO_ABSOLUTE_PATH("cc/bb/ff/truncate/large.bin", base_dir_type), file_open_mode_enum::auto_create | file_open_mode_enum::read_write);
+                result.add_result(handle.is_valid(), "truncate large open");
+                const uint64_t large_file_size_u64 = (static_cast<uint64_t>(4) * 1024 * 1024 * 1024) + 4096;
+                const size_t large_file_size = static_cast<size_t>(large_file_size_u64);
+                result.add_result(file_manager.truncate_file(handle, large_file_size), "truncate large over 4GB");
+                result.add_result(file_manager.get_file_size(handle) == large_file_size, "truncate large over 4GB size");
+                result.add_result(file_manager.truncate_file(handle, 128), "truncate large shrink back");
+                result.add_result(file_manager.get_file_size(handle) == 128, "truncate large shrink back size");
+                file_manager.close_file(handle);
+                file_manager.remove_file_or_dir(TO_ABSOLUTE_PATH("cc/bb/ff/truncate/large.bin", base_dir_type));
+            }
+        };
+
         class test_file_manager : public test_base {
         public:
             virtual test_result test() override
@@ -145,19 +168,7 @@ namespace bq {
                     file_manager.close_file(handle);
                 }
 
-                if (sizeof(size_t) > 4) {
-                    file_manager.remove_file_or_dir(TO_ABSOLUTE_PATH("cc/bb/ff/truncate/large.bin", base_dir_type));
-                    auto handle = file_manager.open_file(TO_ABSOLUTE_PATH("cc/bb/ff/truncate/large.bin", base_dir_type), file_open_mode_enum::auto_create | file_open_mode_enum::read_write);
-                    result.add_result(handle.is_valid(), "truncate large open");
-                    const uint64_t large_file_size_u64 = (static_cast<uint64_t>(4) * 1024 * 1024 * 1024) + 4096;
-                    const size_t large_file_size = static_cast<size_t>(large_file_size_u64);
-                    result.add_result(file_manager.truncate_file(handle, large_file_size), "truncate large over 4GB");
-                    result.add_result(file_manager.get_file_size(handle) == large_file_size, "truncate large over 4GB size");
-                    result.add_result(file_manager.truncate_file(handle, 128), "truncate large shrink back");
-                    result.add_result(file_manager.get_file_size(handle) == 128, "truncate large shrink back size");
-                    file_manager.close_file(handle);
-                    file_manager.remove_file_or_dir(TO_ABSOLUTE_PATH("cc/bb/ff/truncate/large.bin", base_dir_type));
-                }
+                test_file_manager_large_file_truncate<(sizeof(size_t) > 4)>::test(result, file_manager);
 
                 {
                     // last modified time

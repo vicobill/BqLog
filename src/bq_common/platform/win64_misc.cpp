@@ -406,15 +406,16 @@ namespace bq {
         {
             out_real_read_size = 0;
             size_t max_size_pertime = static_cast<size_t>(UINT32_MAX);
-            size_t max_read_size_current = 0;
+            char* current_target = static_cast<char*>(target_addr);
             while (out_real_read_size < read_size) {
-                size_t need_read_size_this_time = bq::min_value(max_size_pertime, read_size - max_read_size_current);
+                size_t need_read_size_this_time = bq::min_value(max_size_pertime, read_size - out_real_read_size);
                 DWORD out_size = 0;
-                bool result = ReadFile(file_handle, target_addr, static_cast<DWORD>(need_read_size_this_time), &out_size, NULL);
+                bool result = ReadFile(file_handle, current_target, static_cast<DWORD>(need_read_size_this_time), &out_size, NULL);
                 if (!result) {
                     return static_cast<int32_t>(GetLastError());
                 }
                 out_real_read_size += static_cast<size_t>(out_size);
+                current_target += out_size;
                 if (out_size != need_read_size_this_time) {
                     return 0;
                 }
