@@ -231,6 +231,10 @@ int32_t main(int32_t argc, char* argv[])
             output_cache.clear();
             break;
         } else if (decode_result != bq::appender_decode_result::success) {
+            output_cache += decoder.get_last_decoded_log_entry();
+            output_cache.push_back('\n');
+            printf("%s", output_cache.c_str());
+            output_cache.clear();
             CONSOLE_OUTPUT(bq::log_level::error, "error: decode failed, reason:%" PRId32 "", static_cast<int32_t>(decoder.get_last_decode_result()));
             return -1 * static_cast<int32_t>(decode_result);
         }

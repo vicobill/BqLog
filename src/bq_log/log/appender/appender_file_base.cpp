@@ -197,6 +197,17 @@ namespace bq {
             cache_read_.erase(cache_read_.begin(), cache_read_cursor_);
             auto total_size = bq::max_value(size, CACHE_READ_DEFAULT_SIZE);
             auto fill_size = total_size - left_size;
+            size_t physical_read_pos = read_file_pos_ + left_size;
+            size_t file_readable_left = (current_file_size_ > physical_read_pos)
+                ? (current_file_size_ - physical_read_pos)
+                : static_cast<size_t>(0);
+            if (fill_size > file_readable_left) {
+                // `fill_size` may be a corrupt / grossly oversized value (e.g. a bogus item
+                // length decoded from a damaged binary log file, up to ~4GB). Without
+                // this clamp, fill_uninitialized() below would try to allocate gigabytes
+                // up front and abort on low-memory devices.
+                fill_size = file_readable_left;
+            }
             cache_read_.fill_uninitialized(fill_size);
             auto read_size = file_manager::instance().read_file(file_, cache_read_.begin() + static_cast<ptrdiff_t>(left_size), fill_size);
             cache_read_cursor_ = 0;
