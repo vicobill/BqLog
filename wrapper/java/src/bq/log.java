@@ -221,7 +221,7 @@ public class log {
     
     /**
      * Get bqLog lib version
-     * @return
+     * @return The bqLog library version.
      */
     public static String get_version()
     {
@@ -241,8 +241,8 @@ public class log {
     /**
      * If bqLog is stored in a relative path, the base dir is determined by the value of base_dir_type.
      * This will return the absolute paths corresponding to both scenarios.
-     * @param base_dir_type
-     * @return
+     * @param base_dir_type The base directory type.
+     * @return The corresponding absolute base directory path.
      */
     public static String get_file_base_dir(int base_dir_type)
     {
@@ -251,8 +251,8 @@ public class log {
 	
 	/**
 	 * Reset the base dir
-	 * @param base_dir_type
-	 * @param dir
+	 * @param base_dir_type The base directory type.
+	 * @param dir The new base directory path.
 	 */
 	public static void reset_base_dir(int base_dir_type, String dir)
 	{
@@ -318,7 +318,7 @@ public class log {
     /**
      * Register a callback that will be invoked whenever a console log message is output. 
      * This can be used for an external system to monitor console log output.
-     * @param callback
+     * @param callback The callback to register, or {@code null} to disable callbacks.
      */
     public static void register_console_callback(console_callback_delegate callback)
     {
@@ -332,7 +332,7 @@ public class log {
 
     /**
      * Unregister a previously registered console callback.
-     * @param callback
+     * @param callback The callback to unregister.
      */
     public static void unregister_console_callback(console_callback_delegate callback)
     {
@@ -346,7 +346,7 @@ public class log {
      * Enable or disable the console appender buffer. 
      * Since our wrapper may run in both C# and Java virtual machines, and we do not want to directly invoke callbacks from a native thread, 
      * we can enable this option. This way, all console outputs will be saved in the buffer until we fetch them.
-     * @param enable
+     * @param enable Whether console appender buffering is enabled.
      */
     public static void set_console_buffer_enable(boolean enable)
     {
@@ -370,8 +370,8 @@ public class log {
     /**
      * Output to console with log_level.
      * Important: This is not log entry, and can not be caught by console callback which was registered by register_console_callback or fetch_and_remove_console_buffer
-     * @param level
-     * @param str
+     * @param level The console log level.
+     * @param str The text to output.
      */
     public static void console(log_level level, String str)
     {
@@ -385,7 +385,7 @@ public class log {
     
     /**
      * copy constructor
-     * @param rhs
+     * @param rhs The log object to copy.
      */
     protected log(log rhs)
     {
@@ -411,7 +411,7 @@ public class log {
     
     /**
      * Modify the log configuration, but some fields, such as buffer_size, cannot be modified.
-     * @param config
+     * @param config The new log configuration string.
      */
     public void reset_config(String config)
     {
@@ -424,8 +424,8 @@ public class log {
 
     /**
      * Temporarily disable or enable a specific Appender.
-     * @param appender_name
-     * @param enable
+     * @param appender_name The appender name.
+     * @param enable Whether the appender is enabled.
      */
     public void set_appender_enable(String appender_name, boolean enable)
     {
@@ -443,7 +443,7 @@ public class log {
 
     /**
      * Get id of this log object
-     * @return
+     * @return The log object identifier.
      */
     public long get_id()
     {
@@ -452,7 +452,7 @@ public class log {
     
     /**
      * Whether a log object is valid
-     * @return
+     * @return {@code true} if this log object is valid; otherwise {@code false}.
      */
     public boolean is_valid()
     {
@@ -461,7 +461,7 @@ public class log {
 
     /**
      * Get the name of a log
-     * @return
+     * @return The log name.
      */
     public String get_name()
     {

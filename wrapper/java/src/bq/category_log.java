@@ -29,7 +29,7 @@ public class category_log extends log{
     
     /**
      * Get log categories count
-     * @return
+     * @return The number of categories in this log.
      */
     public long get_categories_count()
     {
@@ -38,7 +38,7 @@ public class category_log extends log{
 
     /**
      * Get names of all categories
-     * @return
+     * @return The names of all categories in this log.
      */
     public List<String> get_categories_name_array()
     {
