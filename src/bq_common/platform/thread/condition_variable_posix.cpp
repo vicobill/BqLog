@@ -44,11 +44,11 @@ namespace bq {
 
             int32_t cond_init_result = pthread_cond_init(&platform_data_->cond_handle, platform_data_->use_monotonic_clock ? &cond_attr : nullptr);
             if (cond_init_result != 0) {
-                bq::util::log_device_console(log_level::warning, "pthread_cond_init with custom clock failed: %d, falling back", cond_init_result);
+                bq::util::log_device_console(log_level::warning, "pthread_cond_init with custom clock failed: %" PRId32 ", falling back", cond_init_result);
                 platform_data_->use_monotonic_clock = false;
                 cond_init_result = pthread_cond_init(&platform_data_->cond_handle, nullptr);
                 if (cond_init_result != 0) {
-                    bq::util::log_device_console(log_level::fatal, "%s:%d pthread_cond_init failed: %d", __FILE__, __LINE__, cond_init_result);
+                    bq::util::log_device_console(log_level::fatal, "%s:%" PRId32 " pthread_cond_init failed: %" PRId32, __FILE__, __LINE__, cond_init_result);
                 }
             }
 
@@ -85,7 +85,7 @@ namespace bq {
         {
             int32_t result = pthread_cond_wait(&platform_data_->cond_handle, (pthread_mutex_t*)(lock.get_platform_handle()));
             if (result != 0) {
-                bq::util::log_device_console(log_level::error, "pthread_cond_wait failed: %d", result);
+                bq::util::log_device_console(log_level::error, "pthread_cond_wait failed: %" PRId32, result);
             }
         }
 
@@ -125,7 +125,7 @@ namespace bq {
                     return true;
 
                 if (result != ETIMEDOUT) {
-                    bq::util::log_device_console(log_level::error, "pthread_cond_timedwait failed: %d", result);
+                    bq::util::log_device_console(log_level::error, "pthread_cond_timedwait failed: %" PRId32, result);
                     return true;
                 }
             }

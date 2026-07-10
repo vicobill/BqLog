@@ -362,7 +362,7 @@ namespace bq {
         insert_char('\t');
 
         if (head.category_idx >= categories_name_array_ptr_->size()) {
-            bq::util::log_device_console(log_level::error, "layout_prefix error, category %d, maybe header file or struct mismatch in include", head.category_idx);
+            bq::util::log_device_console(log_level::error, "layout_prefix error, category %" PRIu32 ", maybe header file or struct mismatch in include", head.category_idx);
             return enum_layout_result::parse_error;
         }
         const bq::string* category_str_ptr = &(*categories_name_array_ptr_)[head.category_idx];

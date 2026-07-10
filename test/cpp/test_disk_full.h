@@ -196,7 +196,7 @@ namespace bq {
                 bool clean_result = (observed_result == bq::enum_buffer_result_code::success
                     || observed_result == bq::enum_buffer_result_code::err_not_enough_space);
                 result.add_result(clean_result,
-                    "Case A: oversize alloc returned a clean result (got %d)", (int32_t)observed_result);
+                    "Case A: oversize alloc returned a clean result (got %" PRId32 ")", (int32_t)observed_result);
             }
 
             // Case B: when both mmap and heap fallback fail, oversize_buffer
@@ -255,7 +255,7 @@ namespace bq {
                 // Producer-only: drain manually, see drain_buffer_until_empty.
                 drain_buffer_until_empty(buf);
                 result.add_result(observed_result == bq::enum_buffer_result_code::err_io_failure_drop,
-                    "Case B: oversize alloc on OOM returned err_io_failure_drop (got %d)", (int32_t)observed_result);
+                    "Case B: oversize alloc on OOM returned err_io_failure_drop (got %" PRId32 ")", (int32_t)observed_result);
             }
 
             // Case C: appender open() under ENOSPC must not loop max_index forever.
@@ -429,7 +429,7 @@ namespace bq {
                 // Producer-only: drain manually, see drain_buffer_until_empty.
                 drain_buffer_until_empty(buf);
                 result.add_result(observed_result == bq::enum_buffer_result_code::success,
-                    "Case D: block-mode normal alloc returned success (got %d)", (int32_t)observed_result);
+                    "Case D: block-mode normal alloc returned success (got %" PRId32 ")", (int32_t)observed_result);
             }
 
             // Case E: end-to-end fuzz. 4 producer threads logging through a
@@ -500,7 +500,7 @@ namespace bq {
                     t.join();
                 }
                 result.add_result(messages_logged.load(std::memory_order_relaxed) > 0,
-                    "Case E: producers logged at least one message (got %d)",
+                    "Case E: producers logged at least one message (got %" PRId32 ")",
                     messages_logged.load(std::memory_order_relaxed));
 
                 // Final flush so the appender state is clean before reset_config.
@@ -692,13 +692,13 @@ namespace bq {
                 int32_t phase1_found = 0;
                 for (int32_t i = 0; i < N; ++i) {
                     char needle[64];
-                    snprintf(needle, sizeof(needle), "CASE_F_PHASE1_ID=%d\n", i);
+                    snprintf(needle, sizeof(needle), "CASE_F_PHASE1_ID=%" PRId32 "\n", i);
                     if (content.find(needle) != bq::string::npos) {
                         ++phase1_found;
                     }
                 }
                 result.add_result(phase1_found == N,
-                    "Case F: all %d phase-1 IDs present (got %d)", N, phase1_found);
+                    "Case F: all %" PRId32 " phase-1 IDs present (got %" PRId32 ")", N, phase1_found);
 
                 // Phase 3: every ID must appear (recovery worked, hash table
                 // intact, file pointer healthy, no half-line corruption).
@@ -713,13 +713,13 @@ namespace bq {
                 int32_t phase3_found = 0;
                 for (int32_t i = 2 * N; i < 3 * N; ++i) {
                     char needle[64];
-                    snprintf(needle, sizeof(needle), "CASE_F_PHASE3_ID=%d\n", i);
+                    snprintf(needle, sizeof(needle), "CASE_F_PHASE3_ID=%" PRId32 "\n", i);
                     if (content.find(needle) != bq::string::npos) {
                         ++phase3_found;
                     }
                 }
                 result.add_result(phase3_found >= N - 1,
-                    "Case F: phase-3 IDs present (got %d / %d, allow >= %d)", phase3_found, N, N - 1);
+                    "Case F: phase-3 IDs present (got %" PRId32 " / %" PRId32 ", allow >= %" PRId32 ")", phase3_found, N, N - 1);
 
                 // Phase 2: at most ONE phase-2 ID may appear - the very entry
                 // that triggered ENOSPC. By the time write_file returned the
@@ -734,13 +734,13 @@ namespace bq {
                 int32_t phase2_found = 0;
                 for (int32_t i = N; i < 2 * N; ++i) {
                     char needle[64];
-                    snprintf(needle, sizeof(needle), "CASE_F_PHASE2_ID=%d\n", i);
+                    snprintf(needle, sizeof(needle), "CASE_F_PHASE2_ID=%" PRId32 "\n", i);
                     if (content.find(needle) != bq::string::npos) {
                         ++phase2_found;
                     }
                 }
                 result.add_result(phase2_found <= 1,
-                    "Case F: at most 1 phase-2 ID leaked through disk-full window (got %d)", phase2_found);
+                    "Case F: at most 1 phase-2 ID leaked through disk-full window (got %" PRId32 ")", phase2_found);
             }
 
             // Case G: encrypted compressed appender, three-phase sequential.
@@ -850,9 +850,9 @@ namespace bq {
                     }
                 }
                 result.add_result(decoder_ok,
-                    "Case G: decoder ran to EOF without error (entries decoded: %d)", entries_decoded);
+                    "Case G: decoder ran to EOF without error (entries decoded: %" PRId32 ")", entries_decoded);
                 result.add_result(phase1_decoded == N,
-                    "Case G: all %d phase-1 entries decoded (got %d)", N, phase1_decoded);
+                    "Case G: all %" PRId32 " phase-1 entries decoded (got %" PRId32 ")", N, phase1_decoded);
                 // See Case F for why up to 1 phase-3 entry may be missing
                 // and up to 1 phase-2 entry may leak: the first phase-2
                 // entry was already cached (mark_write_finished) when
@@ -861,9 +861,9 @@ namespace bq {
                 // still set (it clears on the next flush, AFTER log_impl
                 // has dropped this entry).
                 result.add_result(phase3_decoded >= N - 1,
-                    "Case G: phase-3 entries decoded (got %d / %d, allow >= %d) - hash-cache / segment / encryption stayed coherent across disk-full window", phase3_decoded, N, N - 1);
+                    "Case G: phase-3 entries decoded (got %" PRId32 " / %" PRId32 ", allow >= %" PRId32 ") - hash-cache / segment / encryption stayed coherent across disk-full window", phase3_decoded, N, N - 1);
                 result.add_result(phase2_decoded <= 1,
-                    "Case G: at most 1 phase-2 entry leaked through disk-full window (got %d)", phase2_decoded);
+                    "Case G: at most 1 phase-2 entry leaked through disk-full window (got %" PRId32 ")", phase2_decoded);
             }
 
         public:

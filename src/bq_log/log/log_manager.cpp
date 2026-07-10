@@ -99,7 +99,7 @@ namespace bq {
             while (true) {
                 auto new_seq = automatic_log_name_seq_.add_fetch_relaxed(1);
                 char tmp[64];
-                snprintf(tmp, sizeof(tmp), "AutoBqLog_%d", new_seq);
+                snprintf(tmp, sizeof(tmp), "AutoBqLog_%" PRId32, new_seq);
                 bq::string random_log_name = tmp;
                 for (decltype(log_imp_list_)::iterator it = log_imp_list_.begin(); it != log_imp_list_.end(); ++it) {
                     if ((*it) && (*it)->get_name() == random_log_name) {

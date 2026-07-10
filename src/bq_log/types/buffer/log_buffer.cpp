@@ -896,7 +896,7 @@ namespace bq {
             if (config_.need_recovery) {
                 auto new_index = current_oversize_buffer_index_.add_fetch(1, bq::platform::memory_order::relaxed);
                 char tmp[32];
-                snprintf(tmp, sizeof(tmp), "_%" PRIu64 "", new_index);
+                snprintf(tmp, sizeof(tmp), "_%" PRIu64, new_index);
                 abs_recovery_file_path = TO_ABSOLUTE_PATH("bqlog_mmap/mmap_" + config_.log_name + "/os/" + config_.log_name + tmp + ".mmap", 0);
             }
             bq::platform::scoped_spin_lock_write_crazy w_lock(temprorary_oversize_buffer_.array_lock_);
@@ -1156,7 +1156,7 @@ namespace bq {
             context_head& context = *reinterpret_cast<context_head*>(data);
             if (context.version_ == buffer.version_) {
 #ifdef BQ_UNIT_TEST
-                bq::util::log_device_console(bq::log_level::error, "fix invalid log data in lp_buffer when recovering, version:%" PRIu16 ", seq:%" PRIu32 "", context.version_, context.seq_);
+                bq::util::log_device_console(bq::log_level::error, "fix invalid log data in lp_buffer when recovering, version:%" PRIu16 ", seq:%" PRIu32, context.version_, context.seq_);
 #endif
                 context.version_++; // mark invalid
             } else if (static_cast<uint16_t>(buffer.version_ - 1 - context.version_) < MAX_RECOVERY_VERSION_RANGE) {
@@ -1187,7 +1187,7 @@ namespace bq {
                 auto& context = block->get_misc_data<block_misc_data>().context_;
                 if (context.version_ == version_) {
 #ifdef BQ_UNIT_TEST
-                    bq::util::log_device_console(bq::log_level::error, "fix invalid log data in hp_buffer used list when recovering, version:%" PRIu16 ", seq:%" PRIu32 "", context.version_, context.seq_);
+                    bq::util::log_device_console(bq::log_level::error, "fix invalid log data in hp_buffer used list when recovering, version:%" PRIu16 ", seq:%" PRIu32, context.version_, context.seq_);
 #endif
                     context.version_++; // mark invalid
                 } else if (static_cast<uint16_t>(version_ - 1 - context.version_) < MAX_RECOVERY_VERSION_RANGE) {
@@ -1214,7 +1214,7 @@ namespace bq {
                 auto& context = block->get_misc_data<block_misc_data>().context_;
                 if (context.version_ == version_) {
 #ifdef BQ_UNIT_TEST
-                    bq::util::log_device_console(bq::log_level::error, "fix invalid log data in hp_buffer stage list when recovering, version:%" PRIu16 ", seq:%" PRIu32 "", context.version_, context.seq_);
+                    bq::util::log_device_console(bq::log_level::error, "fix invalid log data in hp_buffer stage list when recovering, version:%" PRIu16 ", seq:%" PRIu32, context.version_, context.seq_);
 #endif
                     context.version_++; // mark invalid
                 } else if (static_cast<uint16_t>(version_ - 1 - context.version_) < MAX_RECOVERY_VERSION_RANGE) {
@@ -1307,7 +1307,7 @@ namespace bq {
                     if (seq_iter == seq_map.end()) {
                         bq::util::log_device_console(bq::log_level::error, "miss seq:%" PRIu32, cur_min_seq);
                     } else if (seq_iter->value() != 1) {
-                        bq::util::log_device_console(bq::log_level::error, "duplicate seq:%" PRIu32 ", count:%" PRIu16 "", cur_min_seq, seq_iter->value());
+                        bq::util::log_device_console(bq::log_level::error, "duplicate seq:%" PRIu32 ", count:%" PRIu16, cur_min_seq, seq_iter->value());
                     }
                     --left_count;
                     ++cur_min_seq;

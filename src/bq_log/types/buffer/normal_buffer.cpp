@@ -137,7 +137,7 @@ namespace bq {
         }
         if (!memory_map_file_.is_valid()) {
             if (auto_create) {
-                bq::util::log_device_console(bq::log_level::warning, "failed to open mmap file %s, use memory instead of mmap file, error code:%d", mmap_file_abs_path.c_str(), bq::file_manager::get_and_clear_last_file_error());
+                bq::util::log_device_console(bq::log_level::warning, "failed to open mmap file %s, use memory instead of mmap file, error code:%" PRId32, mmap_file_abs_path.c_str(), bq::file_manager::get_and_clear_last_file_error());
             }
             return create_memory_map_result::failed;
         }

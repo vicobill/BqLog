@@ -66,7 +66,7 @@ namespace bq {
             if (!reentrant_) {
                 thread::thread_id current_thread_id = thread::get_current_thread_id();
                 if (platform_data_->owner_thread_id_.exchange_relaxed(current_thread_id) == current_thread_id) {
-                    bq::util::log_device_console(log_level::error, "%s : %d : you're try to reenter a non-recursive mutex", __FILE__, __LINE__);
+                    bq::util::log_device_console(log_level::error, "%s : %" PRId32 " : you're try to reenter a non-recursive mutex", __FILE__, __LINE__);
                     // assert(false && "mutex recursive lock");
                 }
             }
@@ -78,7 +78,7 @@ namespace bq {
                 if (!reentrant_) {
                     thread::thread_id current_thread_id = thread::get_current_thread_id();
                     if (platform_data_->owner_thread_id_.exchange_relaxed(current_thread_id) == current_thread_id) {
-                        bq::util::log_device_console(log_level::error, "%s : %d : you're try to reenter a non-recursive mutex", __FILE__, __LINE__);
+                        bq::util::log_device_console(log_level::error, "%s : %" PRId32 " : you're try to reenter a non-recursive mutex", __FILE__, __LINE__);
                         // assert(false && "mutex recursive lock");
                     }
                 }

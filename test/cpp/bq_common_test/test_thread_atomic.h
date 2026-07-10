@@ -346,7 +346,7 @@ namespace bq {
                     condition_variable_ptr_->wait(*mutex_ptr_, [&]() {
                         return (i_ptr->i.load(platform::memory_order::acquire) % 2) == 0;
                     });
-                    result_ptr_->add_result(i_ptr->i.load(platform::memory_order::acquire) == current_value, "condition variable test %d", current_value);
+                    result_ptr_->add_result(i_ptr->i.load(platform::memory_order::acquire) == current_value, "condition variable test %" PRId32, current_value);
                     current_value += 2;
                     i_ptr->i.add_fetch(1, platform::memory_order::release);
                     mutex_ptr_->unlock();
@@ -380,11 +380,11 @@ namespace bq {
                     return predict;
                 });
                 mutex.unlock();
-                result_ptr_->add_result(result == predict, "wait for time out test, %d", predict);
+                result_ptr_->add_result(result == predict, "wait for time out test, %" PRId32, predict);
                 auto end_time = bq::platform::high_performance_epoch_ms();
                 if (!predict) {
                     auto diff = end_time - start_time;
-                    result_ptr_->add_result(diff > 4000 && diff < 6000, "wait for time out test, timeout:%d", diff);
+                    result_ptr_->add_result(diff > 4000 && diff < 6000, "wait for time out test, timeout:%" PRId32, diff);
                 }
             }
         };
@@ -425,7 +425,7 @@ namespace bq {
                     thread5.join();
 
                     auto i_result = i_value.i.load(platform::memory_order::acquire);
-                    result.add_result(i_result == TEST_THREAD_ATOMIC_LOOP_TIMES * 5, "atomic add test 1, final value:%d", i_result);
+                    result.add_result(i_result == TEST_THREAD_ATOMIC_LOOP_TIMES * 5, "atomic add test 1, final value:%" PRId32, i_result);
                 }
                 test_output_dynamic(bq::log_level::info, "atomic add test is finished, now begin the cas test, please wait...                \r");
                 {
@@ -509,7 +509,7 @@ namespace bq {
                     thread4.join();
                     thread5.join();
 
-                    result.add_result(test_array.size() == TEST_THREAD_ATOMIC_LOOP_TIMES * cas_times_per_loop * 5, "atomic mutex test 1, final size:%d", test_array.size());
+                    result.add_result(test_array.size() == TEST_THREAD_ATOMIC_LOOP_TIMES * cas_times_per_loop * 5, "atomic mutex test 1, final size:%" PRId32, test_array.size());
                     bool check_result = true;
                     uint32_t test_base_value = 0;
                     for (uint32_t i = 0; i < test_array.size(); ++i) {
@@ -558,7 +558,7 @@ namespace bq {
                     thread4.join();
                     thread5.join();
 
-                    result.add_result(test_array.size() == TEST_THREAD_ATOMIC_LOOP_TIMES * cas_times_per_loop * 5, "atomic mutex test 1, final size:%d", test_array.size());
+                    result.add_result(test_array.size() == TEST_THREAD_ATOMIC_LOOP_TIMES * cas_times_per_loop * 5, "atomic mutex test 1, final size:%" PRId32, test_array.size());
                     bool check_result = true;
                     uint32_t test_base_value = 0;
                     for (uint32_t i = 0; i < test_array.size(); ++i) {
@@ -622,7 +622,7 @@ namespace bq {
                         test_cond.wait(test_mutex, [&]() {
                             return (i_value.i.load(platform::memory_order::acquire) % 2) == 1;
                         });
-                        result.add_result(i_value.i.load(platform::memory_order::acquire) == current_value, "condition variable test %d", current_value);
+                        result.add_result(i_value.i.load(platform::memory_order::acquire) == current_value, "condition variable test %" PRId32, current_value);
                         current_value += 2;
                         i_value.i.add_fetch(1, platform::memory_order::release);
                         test_mutex.unlock();

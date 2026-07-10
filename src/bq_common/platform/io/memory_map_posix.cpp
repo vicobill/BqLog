@@ -75,7 +75,7 @@ namespace bq {
                     // mapping, and writing zeros back would destroy recoverable data,
                     // so fail here and let the caller fall back to heap memory
                     result.error_code_ = errno;
-                    bq::util::log_device_console(log_level::warning, "create_memory_map materialize file failed, path:%s, error_code:%d", map_file.abs_file_path().c_str(), result.error_code_);
+                    bq::util::log_device_console(log_level::warning, "create_memory_map materialize file failed, path:%s, error_code:%" PRId32, map_file.abs_file_path().c_str(), result.error_code_);
                     return result;
                 }
                 // a short read only happens at EOF for regular files, pad with zeros
@@ -90,7 +90,7 @@ namespace bq {
                             continue;
                         }
                         result.error_code_ = errno;
-                        bq::util::log_device_console(log_level::warning, "create_memory_map materialize file failed, path:%s, error_code:%d", map_file.abs_file_path().c_str(), result.error_code_);
+                        bq::util::log_device_console(log_level::warning, "create_memory_map materialize file failed, path:%s, error_code:%" PRId32, map_file.abs_file_path().c_str(), result.error_code_);
                         return result;
                     }
                     written += (size_t)write_bytes;
@@ -103,7 +103,7 @@ namespace bq {
 
         if (MAP_FAILED == result.real_data_) {
             result.error_code_ = errno;
-            bq::util::log_device_console(log_level::error, "create_memory_map file failed, path:%s, error_code:%d", map_file.abs_file_path().c_str(), result.error_code_);
+            bq::util::log_device_console(log_level::error, "create_memory_map file failed, path:%s, error_code:%" PRId32, map_file.abs_file_path().c_str(), result.error_code_);
             return result;
         }
 
@@ -120,7 +120,7 @@ namespace bq {
         assert(handle.has_been_mapped() && "flush_memory_map can not be called without create_memory_map and map_to_memory");
 #endif
         if (0 != msync(handle.real_data_, *(const size_t*)handle.platform_data_, MS_SYNC)) {
-            bq::util::log_device_console(log_level::error, "flush_memory_map file failed, error_code:%d", errno);
+            bq::util::log_device_console(log_level::error, "flush_memory_map file failed, error_code:%" PRId32, errno);
         }
     }
 
@@ -130,7 +130,7 @@ namespace bq {
             return;
         }
         if (0 != munmap(handle.real_data_, *(const size_t*)handle.platform_data_)) {
-            bq::util::log_device_console(log_level::error, "release_memory_map file failed, error_code:%d", errno);
+            bq::util::log_device_console(log_level::error, "release_memory_map file failed, error_code:%" PRId32, errno);
         }
         handle.file_.invalid();
         memset(&handle.platform_data_, 0, sizeof(handle.platform_data_));

@@ -21,7 +21,7 @@ namespace bq {
         }
         auto layout_result = layout_ptr_->do_layout(handle, time_zone_, &parent_log_->get_categories_name());
         if (layout_result != layout::enum_layout_result::finished) {
-            bq::util::log_device_console(log_level::error, "text file layout error, result:%d, format str:%s", (int32_t)layout_result, handle.get_format_string_data());
+            bq::util::log_device_console(log_level::error, "text file layout error, result:%" PRId32 ", format str:%s", (int32_t)layout_result, handle.get_format_string_data());
             return false;
         }
         const char* write_data = layout_ptr_->get_formated_str();

@@ -90,7 +90,7 @@ namespace bq {
     create_memory_map_result group_node::create_memory_map(const log_buffer_config& config, uint16_t max_block_count_per_group, uint64_t index)
     {
         char tmp[32];
-        snprintf(tmp, sizeof(tmp), "_%" PRIu64 "", index);
+        snprintf(tmp, sizeof(tmp), "_%" PRIu64, index);
         bq::string path = TO_ABSOLUTE_PATH("bqlog_mmap/mmap_" + config.log_name + "/hp/" + config.log_name + tmp + ".mmap", 0);
         size_t meta_size = get_group_meta_size(config);
         size_t data_size = get_group_data_size(config, max_block_count_per_group);

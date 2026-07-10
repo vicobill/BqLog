@@ -381,13 +381,13 @@ namespace bq {
                         bq::platform::thread::sleep(3);
                         continue;
                     }
-                    bq::util::log_device_console(log_level::error, "add_file_execlusive_check fcntl(F_SETLK) failed, fd:%d, errno:%d", file_handle, err);
+                    bq::util::log_device_console(log_level::error, "add_file_execlusive_check fcntl(F_SETLK) failed, fd:%" PRId32 ", errno:%" PRId32, file_handle, err);
                     return false;
                 }
             }
             struct stat file_info;
             if (fstat(file_handle, &file_info) < 0) {
-                bq::util::log_device_console(log_level::error, "add_file_execlusive_check fstat failed, fd:%d, error code:%d", file_handle, errno);
+                bq::util::log_device_console(log_level::error, "add_file_execlusive_check fstat failed, fd:%" PRId32 ", error code:%" PRId32, file_handle, errno);
                 return false;
             }
             auto& file_exclusive_cache = common_global_vars::get().file_exclusive_cache_;
@@ -410,7 +410,7 @@ namespace bq {
         {
             struct stat file_info;
             if (fstat(file_handle, &file_info) < 0) {
-                bq::util::log_device_console(log_level::error, "remove_file_execlusive_check fstat failed, fd:%d, error code:%d", file_handle, errno);
+                bq::util::log_device_console(log_level::error, "remove_file_execlusive_check fstat failed, fd:%" PRId32 ", error code:%" PRId32, file_handle, errno);
                 return;
             }
             auto& file_exclusive_cache = common_global_vars::get().file_exclusive_cache_;

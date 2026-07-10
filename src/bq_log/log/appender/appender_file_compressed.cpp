@@ -396,7 +396,7 @@ namespace bq {
                     write_handle.data()[log_data_cursor++] = type_info_i;
                     switch (type_info) {
                     case bq::log_arg_type_enum::unsupported_type:
-                        bq::util::log_device_console(bq::log_level::warning, "appender_file_compressed : non_primitivi_type is not supported yet, type:%d", (int32_t)type_info);
+                        bq::util::log_device_console(bq::log_level::warning, "appender_file_compressed : non_primitivi_type is not supported yet, type:%" PRId32, (int32_t)type_info);
                         args_data_cursor = raw_log_args_data_len;
                         break;
                     case bq::log_arg_type_enum::null_type:

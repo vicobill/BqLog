@@ -41,7 +41,7 @@ namespace bq {
     {
         for (uint32_t i = 0; i < 1000; ++i) {
             // 16 may overflow, it only make compilers ignore warning.
-            snprintf(const_cast<char*>(digit3_array) + i * 3, 16, "%03d", i);
+            snprintf(const_cast<char*>(digit3_array) + i * 3, 16, "%03" PRIu32, i);
         }
     }
 

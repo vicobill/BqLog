@@ -28,7 +28,7 @@ namespace bq {
         }
         read_from_file_directly(&file_head_, sizeof(file_head_));
         if (file_head_.version != format_version) {
-            util::log_device_console(log_level::error, "decode log file failed, unsupported binary log format version, tools version:%d, log file version:%d", format_version, file_head_.version);
+            util::log_device_console(log_level::error, "decode log file failed, unsupported binary log format version, tools version:%" PRIu32 ", log file version:%" PRIu32, format_version, file_head_.version);
             return appender_decode_result::failed_decode_error;
         }
         if (!private_key_str.trim().is_empty()) {
@@ -218,7 +218,7 @@ namespace bq {
         time_zone time_zone_tmp(payload_metadata_.use_local_time, payload_metadata_.gmt_offset_hours, payload_metadata_.gmt_offset_minutes, payload_metadata_.time_zone_diff_to_gmt_ms, payload_metadata_.time_zone_str);
         auto layout_result = layout_.do_layout(item, time_zone_tmp, &category_names_);
         if (layout_result != layout::enum_layout_result::finished) {
-            util::log_device_console(log_level::error, "decode compressed log file failed, layout error code:%d", (int32_t)layout_result);
+            util::log_device_console(log_level::error, "decode compressed log file failed, layout error code:%" PRId32, (int32_t)layout_result);
             return appender_decode_result::failed_decode_error;
         }
         if (layout_.get_formated_str_len() > 0) {
