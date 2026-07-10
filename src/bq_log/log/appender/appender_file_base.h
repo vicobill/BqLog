@@ -124,6 +124,8 @@ namespace bq {
         virtual void on_appender_file_recovery_end();
 
         void set_flush_when_destruct(bool flush);
+
+        void open_new_indexed_file_by_name();
 #ifdef BQ_UNIT_TEST
     protected:
 #else
@@ -134,8 +136,6 @@ namespace bq {
         void refresh_cache_write_head_size(bool need_recovery, const bq::string& mmap_file_abs_path);
 
         bool try_recover();
-
-        void open_new_indexed_file_by_name();
 
         bool is_file_oversize();
 

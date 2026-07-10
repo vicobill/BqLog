@@ -129,10 +129,16 @@ namespace bq {
             uint32_t category_count;
         } BQ_PACK_END
 
-            struct seg_info {
+        struct seg_info {
             uint64_t start_pos;
             uint64_t end_pos;
             appender_encryption_type enc_type_;
+        };
+
+        struct segment_topology_info {
+            bool has_segment = false;
+            bool all_segments_are_plaintext = true;
+            uint64_t last_segment_start_pos = 0;
         };
 
     public:
@@ -168,13 +174,15 @@ namespace bq {
     private:
         bool read_to_correct_segment();
         bool read_to_next_segment();
-        void append_new_segment(appender_segment_type type);
+        bool scan_segment_topology(segment_topology_info& result);
+        bool append_new_segment(appender_segment_type type);
         void update_write_cache_padding();
 
     private:
         bq::rsa::public_key rsa_pub_key_;
         seg_info cur_read_seg_;
         appender_encryption_type enc_type_;
+        bool current_file_is_new_created_ = false;
         bq::array<uint8_t, bq::aligned_allocator<uint8_t, appender_file_base::DEFAULT_BUFFER_ALIGNMENT>> xor_key_blob_;
     };
 }

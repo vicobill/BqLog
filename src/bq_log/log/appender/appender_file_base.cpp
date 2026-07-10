@@ -78,7 +78,7 @@ namespace bq {
             auto epoch = bq::platform::high_performance_epoch_ms();
             struct tm time_st;
             time_zone_.get_tm_by_epoch(epoch, time_st);
-            snprintf(error_text, sizeof(error_text), "%s %d-%02d-%02d %02d:%02d:%02d appender_file_base write_file error code:%" PRId32 ", trying open new file real_write_size : %" PRIu64 ", need_write_size : %" PRIu64 "\n",
+            snprintf(error_text, sizeof(error_text), "%s %" PRId32 "-%02" PRId32 "-%02" PRId32 " %02" PRId32 ":%02" PRId32 ":%02" PRId32 " appender_file_base write_file error code:%" PRId32 ", trying open new file real_write_size : %" PRIu64 ", need_write_size : %" PRIu64 "\n",
                 time_zone_.get_time_zone_str().c_str(),
                 time_st.tm_year + 1900, time_st.tm_mon + 1, time_st.tm_mday, time_st.tm_hour, time_st.tm_min, time_st.tm_sec,
                 error_code, static_cast<uint64_t>(real_write_size), static_cast<uint64_t>(need_write_size));
@@ -96,10 +96,10 @@ namespace bq {
                 int32_t err_code = file_manager::instance().get_and_clear_last_file_error();
                 if (err_code != 0) {
                     char ids[32] = { 0 };
-                    snprintf(ids, 32, "%d", err_code);
+                    snprintf(ids, 32, "%" PRId32, err_code);
                     string path = TO_ABSOLUTE_PATH("bqLog/flush_file_error.log", 0);
                     bq::file_manager::write_all_text(path, ids);
-                    bq::util::log_device_console(log_level::warning, "appender_file_base::flush_write_io error, file_path:%s, error code:%d", file_.abs_file_path().c_str(), err_code);
+                    bq::util::log_device_console(log_level::warning, "appender_file_base::flush_write_io error, file_path:%s, error code:%" PRId32, file_.abs_file_path().c_str(), err_code);
                 }
             }
         }
@@ -503,9 +503,16 @@ namespace bq {
             bq::util::log_device_console(bq::log_level::warning, "%s too small, give up recovery!", mmap_file_path.c_str());
             return false;
         }
+        const size_t file_path_offset = BQ_POD_RUNTIME_OFFSET_OF(mmap_head, file_path_);
+        const size_t file_path_capacity = cache_write_entity_->size() - file_path_offset;
+        if (cache_write_head_->file_path_size_ == 0
+            || static_cast<size_t>(cache_write_head_->file_path_size_) > file_path_capacity) {
+            bq::util::log_device_console(bq::log_level::warning, "%s has no valid recovery file path, give up recovery!", mmap_file_path.c_str());
+            return false;
+        }
         bq::string current_file_path;
         current_file_path.insert_batch(current_file_path.end(), cache_write_head_->file_path_, static_cast<size_t>(cache_write_head_->file_path_size_));
-        cache_write_head_size_ = BQ_POD_RUNTIME_OFFSET_OF(mmap_head, file_path_)
+        cache_write_head_size_ = file_path_offset
             + bq::align_8(current_file_path.size());
 
         if (file_manager::is_file(current_file_path)) {
@@ -513,25 +520,36 @@ namespace bq {
         }
         if (!file_) {
             bq::util::log_device_console(bq::log_level::warning, "%s failed to open log file %s, give up recovery!", mmap_file_path.c_str(), current_file_path.c_str());
+            cache_write_head_size_ = sizeof(mmap_head);
             return false;
         }
         current_file_size_ = file_manager::instance().get_file_size(file_);
         cache_write_cursor_ = static_cast<size_t>(cache_write_head_->cache_write_finished_cursor_);
         int64_t caculated_padding = static_cast<int64_t>(cache_write_entity_->size()) - static_cast<int64_t>(cache_write_head_size_) - static_cast<int64_t>(cache_write_head_->write_cache_size_);
         if (caculated_padding < static_cast<int64_t>(0) || caculated_padding >= static_cast<int64_t>(UINT8_MAX)) {
-            bq::util::log_device_console(bq::log_level::warning, "%s invalid mmap head data, give up recovery! calculated padding:%" PRId64 "", mmap_file_path.c_str(), caculated_padding);
+            bq::util::log_device_console(bq::log_level::warning, "%s invalid mmap head data, give up recovery! calculated padding:%" PRId64, mmap_file_path.c_str(), caculated_padding);
+            file_manager::instance().close_file(file_);
+            cache_write_head_size_ = sizeof(mmap_head);
             return false;
         }
         cache_write_padding_ = static_cast<uint8_t>(caculated_padding);
         refresh_cache_write_ptr();
         if (cache_write_head_->cache_write_finished_cursor_ > 0) {
             if (!on_appender_file_recovery_begin()) {
+                file_manager::instance().close_file(file_);
+                cache_write_head_size_ = sizeof(mmap_head);
                 return false;
             }
             flush_write_cache();
+            if (get_pendding_flush_written_size() != 0) {
+                bq::util::log_device_console(bq::log_level::warning, "%s recovery data was not fully flushed, give up recovery!", mmap_file_path.c_str());
+                file_manager::instance().close_file(file_);
+                cache_write_head_size_ = sizeof(mmap_head);
+                return false;
+            }
             on_appender_file_recovery_end();
         }
-        bq::file_manager::instance().close_file(file_);
+        file_manager::instance().close_file(file_);
         return true;
     }
 
@@ -585,7 +603,7 @@ namespace bq {
         bool disk_full_detected = false;
         while (need_open_new_file) {
             char idx_buff[32];
-            snprintf(idx_buff, sizeof(idx_buff), "%d", max_index++);
+            snprintf(idx_buff, sizeof(idx_buff), "%" PRId32, max_index++);
             bq::string file_relative_path = config_file_name_ + (enable_rolling_log_file_ ? static_cast<const char*>(time_str_buf) : "_") + idx_buff + ext_name_with_dot;
             bq::string absolute_file_path = TO_ABSOLUTE_PATH(file_relative_path, base_dir_type_);
             parse_file_context parse_context(absolute_file_path);
@@ -601,10 +619,12 @@ namespace bq {
                 is_disk_full = (err == ENOSPC);
 #endif
                 if (is_disk_full) {
-                    --max_index; // undo the post-increment so we retry this index next time
+                    --max_index;
                     disk_full_detected = true;
                     break;
                 }
+                bq::util::log_device_console(bq::log_level::warning, "open indexed log file failed. path:%s, error:%" PRId32, absolute_file_path.c_str(), err);
+                return;
             }
             need_open_new_file = !open_ok || is_file_oversize();
             if (!need_open_new_file) {
@@ -687,7 +707,7 @@ namespace bq {
             size_t file_size = 0;
             int32_t file_size_result = bq::platform::get_file_size(full_name_in_absolute_path.c_str(), file_size);
             if (file_size_result != 0) {
-                bq::util::log_device_console(log_level::error, "failed to get size of file:%s, error code:%d", full_name_in_absolute_path.c_str(), file_size_result);
+                bq::util::log_device_console(log_level::error, "failed to get size of file:%s, error code:%" PRId32, full_name_in_absolute_path.c_str(), file_size_result);
                 continue;
             }
             file_sum_size += static_cast<uint64_t>(file_size);

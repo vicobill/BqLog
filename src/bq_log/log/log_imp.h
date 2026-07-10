@@ -107,6 +107,7 @@ namespace bq {
         void flush_appenders_io();
         void clear();
         void process_log_chunk(bq::log_entry_handle& read_handle);
+        void log_recovered(const log_entry_handle& handle);
 
     private:
         enum class recover_status_enum {
@@ -130,6 +131,8 @@ namespace bq {
         uint64_t last_flush_io_epoch_ms_;
         recover_status_enum recover_status_;
         bq::array_inline<bq::unique_ptr<appender_base>> appenders_list_;
+        bq::array_inline<appender_base*> recovery_appenders_;
+        bool recovery_appenders_need_begin_;
         bq::array<bq::string> categories_name_array_;
         bq::array_inline<uint8_t> categories_mask_array_;
 
