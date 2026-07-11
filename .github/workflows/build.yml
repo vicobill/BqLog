@@ -7141,7 +7141,16 @@ jobs:
           mem: 8192
           prepare: |
             for i in 1 2 3 4 5; do
-              pkg install -y llvm cmake bash python3 py311-pip py311-setuptools py311-wheel && exit 0
+              if pkg install -y llvm cmake bash python3; then
+                PYVER=$(python3 -c 'import sys; print(f"{sys.version_info[0]}{sys.version_info[1]}")')
+                if pkg install -y "py${PYVER}-pip" "py${PYVER}-setuptools" "py${PYVER}-wheel"; then
+                  exit 0
+                fi
+                echo "py${PYVER}-pip package unavailable, bootstrapping with ensurepip..."
+                if python3 -m ensurepip --upgrade && python3 -m pip install --upgrade pip setuptools wheel; then
+                  exit 0
+                fi
+              fi
               echo "Install failed, retrying in 60s... ($i/5)"
               sleep 60
             done
@@ -7191,7 +7200,16 @@ jobs:
           mem: 8192
           prepare: |
             for i in 1 2 3 4 5; do
-              pkg install -y llvm cmake bash python3 py311-pip py311-setuptools py311-wheel && exit 0
+              if pkg install -y llvm cmake bash python3; then
+                PYVER=$(python3 -c 'import sys; print(f"{sys.version_info[0]}{sys.version_info[1]}")')
+                if pkg install -y "py${PYVER}-pip" "py${PYVER}-setuptools" "py${PYVER}-wheel"; then
+                  exit 0
+                fi
+                echo "py${PYVER}-pip package unavailable, bootstrapping with ensurepip..."
+                if python3 -m ensurepip --upgrade && python3 -m pip install --upgrade pip setuptools wheel; then
+                  exit 0
+                fi
+              fi
               echo "Install failed, retrying in 60s... ($i/5)"
               sleep 60
             done
