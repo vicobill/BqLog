@@ -20,9 +20,11 @@ namespace bq {
             if (!rsa::parse_public_key_ssh(pub_key_str, rsa_pub_key_)) {
                 return false;
             }
+            rsa_key_fingerprint_ = rsa::get_public_key_fingerprint(rsa_pub_key_);
         } else {
             enc_type_ = appender_encryption_type::plaintext;
             rsa_pub_key_ = rsa::public_key();
+            rsa_key_fingerprint_ = 0;
         }
         if (!appender_file_base::init_impl(config_obj)) {
             return false;
@@ -43,9 +45,11 @@ namespace bq {
             if (!rsa::parse_public_key_ssh(pub_key_str, rsa_pub_key_)) {
                 return false;
             }
+            rsa_key_fingerprint_ = rsa::get_public_key_fingerprint(rsa_pub_key_);
         } else {
             enc_type_ = appender_encryption_type::plaintext;
             rsa_pub_key_ = rsa::public_key();
+            rsa_key_fingerprint_ = 0;
         }
         return (enc_type_ == prev_encryption_type)
             && (rsa_pub_key_ == prev_pub_key);
@@ -56,7 +60,10 @@ namespace bq {
         uint32_t format_version = get_binary_format_version();
 
         segment_topology_info topology;
-        if (!scan_segment_topology(topology) || !topology.has_segment || !topology.all_segments_are_plaintext) {
+        if (enc_type_ != appender_encryption_type::plaintext
+            || !scan_segment_topology(topology)
+            || !topology.has_segment
+            || !topology.all_segments_are_plaintext) {
             context.log_parse_fail_reason("binary log segment topology is incompatible with plaintext reuse");
             return false;
         }
@@ -149,7 +156,7 @@ namespace bq {
         cur_read_seg_.end_pos = get_current_file_size();
         if (is_new_created) {
             // write file header and initialize encryption information
-            appender_file_header file_head;
+            appender_file_header file_head {};
             file_head.format = get_appender_format();
             file_head.version = get_binary_format_version();
             if (direct_write(&file_head, sizeof(file_head), bq::file_manager::seek_option::end, 0) != sizeof(file_head)) {
@@ -192,7 +199,7 @@ namespace bq {
 
     void appender_file_binary::flush_write_cache()
     {
-        if (xor_key_blob_.is_empty() || get_pendding_flush_written_size() == 0) {
+        if (enc_type_ != appender_encryption_type::rsa_aes_xor || xor_key_blob_.is_empty() || get_pendding_flush_written_size() == 0) {
             appender_file_base::flush_write_cache();
             return;
         }
@@ -342,8 +349,7 @@ namespace bq {
         if ((seg_head.enc_type != appender_encryption_type::plaintext && seg_head.enc_type != appender_encryption_type::rsa_aes_xor)
             || (seg_head.seg_type != appender_segment_type::normal
                 && seg_head.seg_type != appender_segment_type::recovery_by_appender
-                && seg_head.seg_type != appender_segment_type::recovery_by_log_buffer)
-            || (seg_head.enc_type == appender_encryption_type::plaintext && seg_head.has_key)) {
+                && seg_head.seg_type != appender_segment_type::recovery_by_log_buffer)) {
             return false;
         }
         if (enc_type_ != seg_head.enc_type) {
@@ -367,22 +373,31 @@ namespace bq {
         }
 
         const uint64_t file_size = static_cast<uint64_t>(get_current_file_size());
-        uint64_t current_segment_start_pos = static_cast<uint64_t>(sizeof(appender_file_header));
-        if (file_size < current_segment_start_pos) {
+        if (file_size < sizeof(appender_file_header) || !seek_read_file_absolute(0)) {
             return false;
         }
+        auto read_handle = appender_file_base::read_with_cache(sizeof(appender_file_header));
+        if (read_handle.len() != sizeof(appender_file_header)) {
+            return false;
+        }
+        appender_file_header file_head;
+        memcpy(&file_head, read_handle.data(), sizeof(file_head));
+        if (file_head.version != get_binary_format_version() || file_head.format != get_appender_format()) {
+            return false;
+        }
+
+        uint64_t current_segment_start_pos = static_cast<uint64_t>(sizeof(appender_file_header));
         if (file_size == current_segment_start_pos) {
             return true;
         }
 
-        bool has_encryption_key_in_chain = false;
         while (true) {
             if (current_segment_start_pos > file_size
                 || file_size - current_segment_start_pos < sizeof(appender_file_segment_head)
                 || !seek_read_file_absolute(static_cast<size_t>(current_segment_start_pos))) {
                 return false;
             }
-            auto read_handle = appender_file_base::read_with_cache(sizeof(appender_file_segment_head));
+            read_handle = appender_file_base::read_with_cache(sizeof(appender_file_segment_head));
             if (read_handle.len() != sizeof(appender_file_segment_head)) {
                 return false;
             }
@@ -392,26 +407,34 @@ namespace bq {
             if ((seg_head.enc_type != appender_encryption_type::plaintext && seg_head.enc_type != appender_encryption_type::rsa_aes_xor)
                 || (seg_head.seg_type != appender_segment_type::normal
                     && seg_head.seg_type != appender_segment_type::recovery_by_appender
-                    && seg_head.seg_type != appender_segment_type::recovery_by_log_buffer)
-                || (seg_head.enc_type == appender_encryption_type::plaintext && seg_head.has_key)) {
+                    && seg_head.seg_type != appender_segment_type::recovery_by_log_buffer)) {
                 return false;
             }
+
+            uint64_t min_next_segment_pos = current_segment_start_pos + sizeof(appender_file_segment_head);
             if (seg_head.enc_type == appender_encryption_type::rsa_aes_xor) {
-                if (seg_head.has_key) {
-                    has_encryption_key_in_chain = true;
-                } else if (!has_encryption_key_in_chain) {
+                if (file_size - min_next_segment_pos < get_encryption_keys_size()) {
                     return false;
                 }
+                read_handle = appender_file_base::read_with_cache(sizeof(uint64_t));
+                if (read_handle.len() != sizeof(uint64_t)) {
+                    return false;
+                }
+                uint64_t fingerprint;
+                memcpy(&fingerprint, read_handle.data(), sizeof(fingerprint));
+                if (!result.has_encrypted_segment) {
+                    result.has_encrypted_segment = true;
+                    result.rsa_key_fingerprint = fingerprint;
+                } else if (result.rsa_key_fingerprint != fingerprint) {
+                    return false;
+                }
+                min_next_segment_pos += get_encryption_keys_size();
             }
 
             result.has_segment = true;
             result.last_segment_start_pos = current_segment_start_pos;
             result.all_segments_are_plaintext &= (seg_head.enc_type == appender_encryption_type::plaintext);
 
-            uint64_t min_next_segment_pos = current_segment_start_pos + sizeof(appender_file_segment_head);
-            if (seg_head.enc_type == appender_encryption_type::rsa_aes_xor && seg_head.has_key) {
-                min_next_segment_pos += get_encryption_keys_size();
-            }
             if (seg_head.next_seg_pos == UINT64_MAX) {
                 return file_size >= min_next_segment_pos;
             }
@@ -433,13 +456,18 @@ namespace bq {
             bq::util::log_device_console(bq::log_level::error, "binary appender refused to append a segment to invalid topology: %s", get_file_handle().abs_file_path().c_str());
             return false;
         }
+        if (enc_type_ == appender_encryption_type::rsa_aes_xor
+            && topology.has_encrypted_segment
+            && topology.rsa_key_fingerprint != rsa_key_fingerprint_) {
+            bq::util::log_device_console(bq::log_level::warning, "binary appender refused to append a segment with a different RSA key: %s", get_file_handle().abs_file_path().c_str());
+            return false;
+        }
 
-        const bool need_new_encryption_key = (enc_type_ == appender_encryption_type::rsa_aes_xor) && xor_key_blob_.is_empty();
         bq::aes::key_type ciphertext_aes_key;
         bq::aes::iv_type aes_iv;
         decltype(xor_key_blob_) xor_key_blob_plaintext;
         bq::array<uint8_t> xor_key_blob_ciphertext;
-        if (need_new_encryption_key) {
+        if (enc_type_ == appender_encryption_type::rsa_aes_xor) {
             aes aes_obj(bq::aes::enum_cipher_mode::AES_CBC, bq::aes::enum_key_bits::AES_256);
             auto aes_key = aes_obj.generate_key();
             if (aes_key.size() != aes_obj.get_key_size()) {
@@ -469,32 +497,36 @@ namespace bq {
             }
         }
 
-        if (topology.has_segment) {
-            uint64_t new_seg_start_pos = static_cast<uint64_t>(get_current_file_size());
-            if (direct_write(&new_seg_start_pos, sizeof(new_seg_start_pos), bq::file_manager::seek_option::begin,
-                    static_cast<int64_t>(topology.last_segment_start_pos) + static_cast<int64_t>(BQ_POD_RUNTIME_OFFSET_OF(appender_file_segment_head, next_seg_pos))) != sizeof(new_seg_start_pos)) {
-                bq::util::log_device_console(bq::log_level::error, "link previous binary segment failed: %s", get_file_handle().abs_file_path().c_str());
-                return false;
-            }
-        }
-        appender_file_segment_head new_segment;
+        const uint64_t new_seg_start_pos = static_cast<uint64_t>(get_current_file_size());
+        appender_file_segment_head new_segment {};
         new_segment.enc_type = enc_type_;
         new_segment.next_seg_pos = UINT64_MAX;
         new_segment.seg_type = type;
-        new_segment.has_key = need_new_encryption_key;
         if (direct_write(&new_segment, sizeof(new_segment), bq::file_manager::seek_option::end, 0) != sizeof(new_segment)) {
             bq::util::log_device_console(bq::log_level::error, "write binary segment header failed: %s", get_file_handle().abs_file_path().c_str());
+            bq::file_manager::instance().truncate_file(get_file_handle(), static_cast<size_t>(new_seg_start_pos));
             return false;
         }
-        if (need_new_encryption_key) {
-            if (direct_write(static_cast<const uint8_t*>(ciphertext_aes_key.begin()), ciphertext_aes_key.size(), bq::file_manager::seek_option::current, 0) != ciphertext_aes_key.size()
+        if (enc_type_ == appender_encryption_type::rsa_aes_xor) {
+            if (direct_write(&rsa_key_fingerprint_, sizeof(rsa_key_fingerprint_), bq::file_manager::seek_option::current, 0) != sizeof(rsa_key_fingerprint_)
+                || direct_write(static_cast<const uint8_t*>(ciphertext_aes_key.begin()), ciphertext_aes_key.size(), bq::file_manager::seek_option::current, 0) != ciphertext_aes_key.size()
                 || direct_write(static_cast<const uint8_t*>(aes_iv.begin()), aes_iv.size(), bq::file_manager::seek_option::current, 0) != aes_iv.size()
                 || direct_write(static_cast<const uint8_t*>(xor_key_blob_ciphertext.begin()), xor_key_blob_ciphertext.size(), bq::file_manager::seek_option::current, 0) != xor_key_blob_ciphertext.size()) {
                 bq::util::log_device_console(bq::log_level::error, "write binary segment encryption data failed: %s", get_file_handle().abs_file_path().c_str());
+                bq::file_manager::instance().truncate_file(get_file_handle(), static_cast<size_t>(new_seg_start_pos));
                 return false;
             }
-            xor_key_blob_ = bq::move(xor_key_blob_plaintext);
         }
+        flush_write_io();
+        if (topology.has_segment
+            && direct_write(&new_seg_start_pos, sizeof(new_seg_start_pos), bq::file_manager::seek_option::begin,
+                   static_cast<int64_t>(topology.last_segment_start_pos) + static_cast<int64_t>(BQ_POD_RUNTIME_OFFSET_OF(appender_file_segment_head, next_seg_pos)))
+                != sizeof(new_seg_start_pos)) {
+            bq::file_manager::instance().truncate_file(get_file_handle(), static_cast<size_t>(new_seg_start_pos));
+            bq::util::log_device_console(bq::log_level::error, "link previous binary segment failed: %s", get_file_handle().abs_file_path().c_str());
+            return false;
+        }
+        xor_key_blob_ = bq::move(xor_key_blob_plaintext);
         flush_write_io();
         update_write_cache_padding();
         return true;

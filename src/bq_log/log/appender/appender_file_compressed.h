@@ -65,7 +65,7 @@ namespace bq {
         };
 
     public:
-        static constexpr uint32_t format_version = 9;
+        static constexpr uint32_t format_version = 10;
 
     protected:
         virtual bool init_impl(const bq::property_value& config_obj) override;

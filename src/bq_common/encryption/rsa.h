@@ -68,6 +68,8 @@ namespace bq {
         // Parse PKCS#1 PEM private key text (bq::string)
         static bool parse_private_key_pem(const bq::string& pem, private_key& out);
 
+        static uint64_t get_public_key_fingerprint(const public_key& key);
+
         // Encrypt: output ciphertext is k bytes, plaintext must be integer < modulus
         static bool encrypt(const public_key& pub,
             const bq::array<uint8_t>& plaintext,

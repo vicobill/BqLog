@@ -14,7 +14,7 @@
  * Overview
  * - Binary container used by the appender subsystem.
  * - The file consists of a global File Header followed by a linked list of Segments.
- * - Each Segment contains a Segment Header, optional Encryption Info, and Data.
+ * - Each Segment contains a Segment Header, optional Encryption Metadata, and Data.
  *
  * Top-level binary layout
  * -----------------------------------------------------------------------------
@@ -30,7 +30,7 @@
  *    0x0005     3  char padding[3]
  *
  * 2. Segment Structure
- *    Each segment begins with a Segment Header, followed by Encryption Info (if enabled),
+ *    Each segment begins with a Segment Header, followed by Encryption Metadata (if enabled),
  *    and then the Segment Payload.
  *
  *    A. Segment Header (12 bytes)
@@ -39,15 +39,15 @@
  *       +0x00      8  uint64_t next_seg_pos  (Abs offset of next segment, or UINT64_MAX)
  *       +0x08      1  appender_segment_type seg_type
  *       +0x09      1  appender_encryption_type enc_type
- *       +0x0A      1  bool has_key (Whether encryption keys are present)
- *       +0x0B      1  char padding[2]
+ *       +0x0A      2  char padding[2]
  *
- *    B. Encryption Keys (Optional, Present only if enc_type == rsa_aes_xor and only has_key is true in Segment Header)
+ *    B. Encryption Metadata (Present only if enc_type == rsa_aes_xor)
  *       Offset  Size       Field
  *       ------  ---------  ---------------------------------------------------
- *       +0x00   256        RSA-2048 ciphertext of AES_256 key
- *       +0x100  16         AES IV in plaintext
- *       +0x110  32768      AES-encrypted XOR key blob (32 KiB)
+ *       +0x000  8          64-bit hash of RSA public modulus and exponent
+ *       +0x008  256        RSA-2048 ciphertext of AES_256 key
+ *       +0x108  16         AES IV in plaintext
+ *       +0x118  32768      AES-encrypted XOR key blob (32 KiB)
  *
  *    C. Segment Payload (Optional, The content depends on whether it is the First Segment or a subsequent one.)
  *
@@ -113,9 +113,8 @@ namespace bq {
             uint64_t next_seg_pos;
             appender_segment_type seg_type;
             appender_encryption_type enc_type;
-            bool has_key;
-            char padding[1];
-        } BQ_PACK_END static_assert(sizeof(appender_file_segment_head) == 12, "appender_file_header size error");
+            char padding[2];
+        } BQ_PACK_END static_assert(sizeof(appender_file_segment_head) == 12, "appender_file_segment_head size error");
 
         // Only exist in first segment
         BQ_PACK_BEGIN
@@ -138,6 +137,8 @@ namespace bq {
         struct segment_topology_info {
             bool has_segment = false;
             bool all_segments_are_plaintext = true;
+            bool has_encrypted_segment = false;
+            uint64_t rsa_key_fingerprint = 0;
             uint64_t last_segment_start_pos = 0;
         };
 
@@ -149,7 +150,8 @@ namespace bq {
 
         bq_forceinline static constexpr size_t get_encryption_keys_size()
         {
-            return 256 // size of RSA-2048 ciphertext of AES key
+            return sizeof(uint64_t) // size of RSA public-key fingerprint
+                + 256 // size of RSA-2048 ciphertext of AES key
                 + 16 // size of AES IV in plaintext
                 + get_xor_key_blob_size(); // size of AES-encrypted XOR key blob
         }
@@ -180,6 +182,7 @@ namespace bq {
 
     private:
         bq::rsa::public_key rsa_pub_key_;
+        uint64_t rsa_key_fingerprint_ = 0;
         seg_info cur_read_seg_;
         appender_encryption_type enc_type_;
         bool current_file_is_new_created_ = false;

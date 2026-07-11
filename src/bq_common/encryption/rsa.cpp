@@ -21,6 +21,32 @@
 #include "bq_common/encryption/rsa.h"
 
 namespace bq {
+    static uint64_t get_public_key_fingerprint(const bq::array<uint8_t>& n, const bq::array<uint8_t>& e)
+    {
+        if (n.is_empty() || e.is_empty()) {
+            return 0;
+        }
+        bq::array<uint8_t> data;
+        data.fill_uninitialized(n.size() + e.size() + sizeof(uint32_t) * 2);
+        uint8_t* cursor = data.begin();
+        const uint32_t n_size = static_cast<uint32_t>(n.size());
+        const uint32_t e_size = static_cast<uint32_t>(e.size());
+        cursor[0] = static_cast<uint8_t>(n_size >> 24);
+        cursor[1] = static_cast<uint8_t>(n_size >> 16);
+        cursor[2] = static_cast<uint8_t>(n_size >> 8);
+        cursor[3] = static_cast<uint8_t>(n_size);
+        cursor += sizeof(uint32_t);
+        memcpy(cursor, n.begin(), n.size());
+        cursor += n.size();
+        cursor[0] = static_cast<uint8_t>(e_size >> 24);
+        cursor[1] = static_cast<uint8_t>(e_size >> 16);
+        cursor[2] = static_cast<uint8_t>(e_size >> 8);
+        cursor[3] = static_cast<uint8_t>(e_size);
+        cursor += sizeof(uint32_t);
+        memcpy(cursor, e.begin(), e.size());
+        return bq::util::get_hash_64(data.begin(), data.size());
+    }
+
     static uint32_t load_u32_be(const uint8_t* p)
     {
         uint32_t v = 0;
@@ -686,6 +712,11 @@ namespace bq {
         out.qinv_.insert_batch(out.qinv_.end(), qi_be.begin(), qi_be.size());
 
         return true;
+    }
+
+    uint64_t rsa::get_public_key_fingerprint(const public_key& key)
+    {
+        return bq::get_public_key_fingerprint(key.n_, key.e_);
     }
 
     bool rsa::encrypt(const public_key& pub, const bq::array<uint8_t>& plaintext, bq::array<uint8_t>& out_ciphertext)

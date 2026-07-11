@@ -16,7 +16,7 @@ namespace bq {
         friend class appender_decoder_raw;
 
     public:
-        static constexpr uint32_t format_version = 6;
+        static constexpr uint32_t format_version = 7;
 
     protected:
         virtual bool log_impl(const log_entry_handle& handle) override;

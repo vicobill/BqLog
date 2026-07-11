@@ -37,10 +37,10 @@ namespace bq {
         };
 
         struct seg_info {
-            uint64_t start_pos;
-            uint64_t end_pos;
-            appender_file_binary::appender_segment_type seg_type;
-            appender_file_binary::appender_encryption_type enc_type;
+            uint64_t start_pos = 0;
+            uint64_t end_pos = 0;
+            appender_file_binary::appender_segment_type seg_type = appender_file_binary::appender_segment_type::normal;
+            appender_file_binary::appender_encryption_type enc_type = appender_file_binary::appender_encryption_type::plaintext;
             bq::array<uint8_t, bq::aligned_allocator<uint8_t, appender_file_base::DEFAULT_BUFFER_ALIGNMENT>> xor_key_blob;
         };
 

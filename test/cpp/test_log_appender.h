@@ -93,6 +93,16 @@ namespace bq {
                 ;
                 parse_exist_log_file(context); // used to seek file to begin of data section
             }
+
+            bool write_payload_for_test(const bq::array<uint8_t>& data)
+            {
+                auto handle = alloc_write_cache(data.size());
+                memcpy(handle.data(), data.begin(), data.size());
+                return_write_cache(handle);
+                mark_write_finished();
+                flush_write_cache();
+                return get_pendding_flush_written_size() == 0;
+            }
         };
         class appender_file_binary_recovery_for_test : public appender_file_binary_for_test {
         public:
@@ -135,10 +145,26 @@ namespace bq {
         public:
             bool append_appender_recovery_to_file_for_test(const bq::string& path)
             {
+                bq::array<uint8_t> empty;
+                return append_appender_recovery_to_file_for_test(path, empty);
+            }
+
+            bool append_appender_recovery_to_file_for_test(const bq::string& path, const bq::array<uint8_t>& data)
+            {
                 if (!open_file_with_write_exclusive(path)) {
                     return false;
                 }
-                return on_appender_file_recovery_begin();
+                if (!on_appender_file_recovery_begin()) {
+                    return false;
+                }
+                if (!data.is_empty()) {
+                    auto handle = alloc_write_cache(data.size());
+                    memcpy(handle.data(), data.begin(), data.size());
+                    return_write_cache(handle);
+                    mark_write_finished();
+                    flush_write_cache();
+                }
+                return get_pendding_flush_written_size() == 0;
             }
         };
         class appender_file_raw_mmap_for_test : public appender_file_raw {
@@ -190,6 +216,19 @@ namespace bq {
             virtual uint32_t get_binary_format_version() const override
             {
                 return 1;
+            }
+
+        public:
+            bool read_payload_for_test(const bq::array<uint8_t>& expected)
+            {
+                auto handle = read_with_cache(expected.size());
+                return handle.len() == expected.size()
+                    && memcmp(handle.data(), expected.begin(), expected.size()) == 0;
+            }
+
+            bool is_eof_for_test()
+            {
+                return read_with_cache(1).len() == 0;
             }
         };
 
@@ -403,6 +442,16 @@ namespace bq {
                 return data;
             }
 
+            static bq::array<uint8_t> make_segment_payload(uint32_t case_index, uint32_t segment_index)
+            {
+                bq::array<uint8_t> data;
+                data.fill_uninitialized(73 + segment_index * 29);
+                for (size_t i = 0; i < data.size(); ++i) {
+                    data[i] = static_cast<uint8_t>((case_index * 31 + segment_index * 17 + i) & 0xFF);
+                }
+                return data;
+            }
+
             static bool write_recovery_log_entry(log_buffer& buffer, const bq::array<uint8_t>& data)
             {
                 auto write_handle = buffer.alloc_write_chunk(static_cast<uint32_t>(data.size()), reinterpret_cast<const _log_entry_head_def*>(&data[0])->timestamp_epoch);
@@ -497,6 +546,8 @@ namespace bq {
                 bq::string pub_key_b = bq::string("ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCwOxf6ZHiNn4T1jcjuCoBDbQ9nvDn3HEwyRCYjiHh/f6Hz+CmNQqd6ErccjjqQO/B5R2LpC2/BrESSXa08u3oe1e+AhFCcdFmTOvzlamfTjOwFEwiOxt2aBOkFmhe4UTibKxNWK4ODOgSpN/4xZqo+Njpx/NRyGwj6b0oxUrdN+LIXU4NhOBz8aovF9wdbmgvAAUdRToSthO1gS1k5w15/XvtGV2mxRtU3gGtrmpl6KvWq+r3oYSAgBO4N+4DQ7oGsp/k5NkaZXumlUD4LRPLTuh/iEx7V68FMTh6BJklkE6ZtBxwJD94NO4Yut3LPM2bUE2aLCf5unloezAdytKrB pippocao@PIPPOCAO-PC6");
                 if (!recovery_mmap_test_done_) {
                     do_binary_appender_reset_to_plaintext_test(result, pub_key);
+                    do_binary_segment_encryption_matrix_test(result, pub_key, priv_key);
+                    do_binary_segment_key_boundary_test(result, pub_key, priv_key, pub_key_b);
                     do_binary_recovery_segment_test(result, pub_key);
                     do_binary_recovery_mmap_test(result, pub_key, pub_key_b);
                     recovery_mmap_test_done_ = true;
@@ -537,9 +588,18 @@ namespace bq {
                 result.add_result(initialized && !reused, "encrypted appender must be recreated when pub_key is removed");
             }
 
-            static bool read_binary_segment_chain_for_test(const bq::string& path, bq::array<appender_file_binary::appender_file_segment_head>& segment_heads)
+            static bool read_binary_segment_chain_for_test(const bq::string& path,
+                bq::array<appender_file_binary::appender_file_segment_head>& segment_heads,
+                bq::array<uint64_t>* fingerprints = nullptr,
+                bq::array<uint64_t>* key_data_hashes = nullptr)
             {
                 segment_heads.clear();
+                if (fingerprints) {
+                    fingerprints->clear();
+                }
+                if (key_data_hashes) {
+                    key_data_hashes->clear();
+                }
                 auto file = bq::file_manager::instance().open_file(path, bq::file_open_mode_enum::read);
                 if (!file) {
                     return false;
@@ -562,6 +622,37 @@ namespace bq {
                         break;
                     }
                     segment_heads.push_back(segment_head);
+                    uint64_t segment_end = segment_head.next_seg_pos == UINT64_MAX ? static_cast<uint64_t>(file_size) : segment_head.next_seg_pos;
+                    uint64_t min_segment_end = segment_pos + sizeof(segment_head);
+                    uint64_t fingerprint = 0;
+                    uint64_t key_data_hash = 0;
+                    if (segment_head.enc_type == appender_file_binary::appender_encryption_type::rsa_aes_xor) {
+                        min_segment_end += appender_file_binary::get_encryption_keys_size();
+                        if (segment_end < min_segment_end
+                            || bq::file_manager::instance().read_file(file, &fingerprint, sizeof(fingerprint)) != sizeof(fingerprint)) {
+                            success = false;
+                            break;
+                        }
+                        bq::array<uint8_t> key_data;
+                        key_data.fill_uninitialized(appender_file_binary::get_encryption_keys_size() - sizeof(fingerprint));
+                        if (bq::file_manager::instance().read_file(file, key_data.begin(), key_data.size()) != key_data.size()) {
+                            success = false;
+                            break;
+                        }
+                        key_data_hash = bq::util::get_hash_64(key_data.begin(), key_data.size());
+                    } else if (segment_head.enc_type != appender_file_binary::appender_encryption_type::plaintext) {
+                        success = false;
+                        break;
+                    } else if (segment_end < min_segment_end) {
+                        success = false;
+                        break;
+                    }
+                    if (fingerprints) {
+                        fingerprints->push_back(fingerprint);
+                    }
+                    if (key_data_hashes) {
+                        key_data_hashes->push_back(key_data_hash);
+                    }
                     if (segment_head.next_seg_pos == UINT64_MAX) {
                         break;
                     }
@@ -576,6 +667,240 @@ namespace bq {
                 }
                 bq::file_manager::instance().close_file(file);
                 return success && !segment_heads.is_empty();
+            }
+
+            void do_binary_segment_encryption_matrix_test(test_result& result, const bq::string& pub_key, const bq::string& private_key)
+            {
+                clear_appender_file_base_test_folder();
+                rsa::public_key parsed_key;
+                const bool key_ok = rsa::parse_public_key_ssh(pub_key, parsed_key);
+                const uint64_t expected_fingerprint = key_ok ? rsa::get_public_key_fingerprint(parsed_key) : 0;
+                result.add_result(key_ok, "parse segment matrix RSA key");
+                if (!key_ok) {
+                    return;
+                }
+
+                log_imp log_obj;
+                bq::array<bq::string> categories;
+                categories.push_back("");
+                const auto log_config = bq::property_value::create_from_string(R"(
+                    log.recovery=false
+                    appenders_config.appender_0.type=console
+                )");
+                if (!log_obj.init("binary_segment_encryption_matrix", log_config, categories)) {
+                    result.add_result(false, "init segment matrix parent log");
+                    return;
+                }
+
+                constexpr uint32_t segment_count = 4;
+                for (uint32_t mask = 0; mask < (1U << segment_count); ++mask) {
+                    char case_id[32];
+                    snprintf(case_id, sizeof(case_id), "%" PRIu32, mask);
+                    const bq::string file_name = bq::string("appender_test/segment_matrix_") + case_id;
+                    const bq::string file_path = TO_ABSOLUTE_PATH(file_name + "_1.bt", 0);
+                    bool case_ok = true;
+
+                    {
+                        appender_file_binary_for_test writer;
+                        const bq::string segment_pub_key = (mask & 1U) ? pub_key : "";
+                        case_ok = writer.init("segment_matrix_first", make_binary_recovery_test_config(file_name, segment_pub_key), &log_obj)
+                            && writer.write_payload_for_test(make_segment_payload(mask, 0));
+                    }
+                    for (uint32_t i = 1; i < segment_count && case_ok; ++i) {
+                        appender_file_binary_appender_recovery_for_test writer;
+                        const bq::string segment_pub_key = (mask & (1U << i)) ? pub_key : "";
+                        case_ok = writer.init("segment_matrix_append", make_binary_recovery_test_config(file_name, segment_pub_key), &log_obj)
+                            && writer.append_appender_recovery_to_file_for_test(file_path, make_segment_payload(mask, i));
+                    }
+
+                    bq::array<appender_file_binary::appender_file_segment_head> segment_heads;
+                    bq::array<uint64_t> fingerprints;
+                    bq::array<uint64_t> key_data_hashes;
+                    case_ok = case_ok
+                        && read_binary_segment_chain_for_test(file_path, segment_heads, &fingerprints, &key_data_hashes)
+                        && segment_heads.size() == segment_count;
+                    for (uint32_t i = 0; i < segment_count && case_ok; ++i) {
+                        const bool encrypted = (mask & (1U << i)) != 0;
+                        case_ok = segment_heads[i].enc_type == (encrypted
+                                      ? appender_file_binary::appender_encryption_type::rsa_aes_xor
+                                      : appender_file_binary::appender_encryption_type::plaintext)
+                            && fingerprints[i] == (encrypted ? expected_fingerprint : 0);
+                        if (encrypted) {
+                            for (uint32_t j = 0; j < i; ++j) {
+                                if ((mask & (1U << j)) && key_data_hashes[i] == key_data_hashes[j]) {
+                                    case_ok = false;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    auto file = bq::file_manager::instance().open_file(file_path, bq::file_open_mode_enum::read);
+                    appender_decoder_for_test decoder;
+                    case_ok = case_ok && file
+                        && decoder.init(file, mask == 0 ? "" : private_key) == appender_decode_result::success;
+                    for (uint32_t i = 0; i < segment_count && case_ok; ++i) {
+                        case_ok = decoder.read_payload_for_test(make_segment_payload(mask, i));
+                    }
+                    case_ok = case_ok && decoder.is_eof_for_test();
+                    bq::file_manager::instance().close_file(file);
+                    result.add_result(case_ok, "binary segment encryption sequence:%" PRIu32, mask);
+                }
+            }
+
+            void do_binary_segment_key_boundary_test(test_result& result, const bq::string& pub_key_a, const bq::string& private_key_a, const bq::string& pub_key_b)
+            {
+                clear_appender_file_base_test_folder();
+                log_imp log_obj;
+                bq::array<bq::string> categories;
+                categories.push_back("");
+                const auto log_config = bq::property_value::create_from_string(R"(
+                    log.recovery=false
+                    appenders_config.appender_0.type=console
+                )");
+                bool test_ok = log_obj.init("binary_segment_key_boundary", log_config, categories);
+                const bq::string file_name = "appender_test/segment_key_boundary";
+                const bq::string file_path = TO_ABSOLUTE_PATH(file_name + "_1.bt", 0);
+
+                {
+                    appender_file_binary_for_test writer;
+                    test_ok = test_ok
+                        && writer.init("segment_key_first", make_binary_recovery_test_config(file_name, pub_key_a), &log_obj)
+                        && writer.write_payload_for_test(make_segment_payload(100, 0));
+                }
+                const size_t file_size_before_mismatch = bq::file_manager::get_file_size(file_path);
+                bool different_key_rejected = false;
+                {
+                    appender_file_binary_appender_recovery_for_test writer;
+                    different_key_rejected = writer.init("segment_key_b", make_binary_recovery_test_config(file_name, pub_key_b), &log_obj)
+                        && !writer.append_appender_recovery_to_file_for_test(file_path, make_segment_payload(100, 1));
+                }
+                test_ok = test_ok && different_key_rejected
+                    && bq::file_manager::get_file_size(file_path) == file_size_before_mismatch;
+
+                {
+                    appender_file_binary_appender_recovery_for_test writer;
+                    test_ok = test_ok
+                        && writer.init("segment_key_plain", make_binary_recovery_test_config(file_name, ""), &log_obj)
+                        && writer.append_appender_recovery_to_file_for_test(file_path, make_segment_payload(100, 1));
+                }
+                {
+                    appender_file_binary_appender_recovery_for_test writer;
+                    test_ok = test_ok
+                        && writer.init("segment_key_alias", make_binary_recovery_test_config(file_name, pub_key_a + " alias"), &log_obj)
+                        && writer.append_appender_recovery_to_file_for_test(file_path, make_segment_payload(100, 2));
+                }
+
+                bq::array<appender_file_binary::appender_file_segment_head> segment_heads;
+                bq::array<uint64_t> fingerprints;
+                bq::array<uint64_t> key_data_hashes;
+                test_ok = test_ok
+                    && read_binary_segment_chain_for_test(file_path, segment_heads, &fingerprints, &key_data_hashes)
+                    && segment_heads.size() == 3
+                    && fingerprints[0] != 0
+                    && fingerprints[1] == 0
+                    && fingerprints[2] == fingerprints[0]
+                    && key_data_hashes[0] != key_data_hashes[2];
+
+                auto file = bq::file_manager::instance().open_file(file_path, bq::file_open_mode_enum::read);
+                appender_decoder_for_test decoder;
+                test_ok = test_ok && file
+                    && decoder.init(file, private_key_a) == appender_decode_result::success
+                    && decoder.read_payload_for_test(make_segment_payload(100, 0))
+                    && decoder.read_payload_for_test(make_segment_payload(100, 1))
+                    && decoder.read_payload_for_test(make_segment_payload(100, 2))
+                    && decoder.is_eof_for_test();
+                bq::file_manager::instance().close_file(file);
+                result.add_result(test_ok, "binary segment single RSA key boundary");
+
+                const bq::string wrong_key_name = "appender_test/segment_wrong_private_key";
+                const bq::string wrong_key_path = TO_ABSOLUTE_PATH(wrong_key_name + "_1.bt", 0);
+                bool wrong_private_key_rejected = false;
+                {
+                    appender_file_binary_for_test writer;
+                    wrong_private_key_rejected = writer.init("segment_wrong_private", make_binary_recovery_test_config(wrong_key_name, pub_key_b), &log_obj)
+                        && writer.write_payload_for_test(make_segment_payload(101, 0));
+                }
+                file = bq::file_manager::instance().open_file(wrong_key_path, bq::file_open_mode_enum::read);
+                appender_decoder_for_test wrong_key_decoder;
+                wrong_private_key_rejected = wrong_private_key_rejected && file
+                    && wrong_key_decoder.init(file, private_key_a) == appender_decode_result::failed_decode_error;
+                bq::file_manager::instance().close_file(file);
+                result.add_result(wrong_private_key_rejected, "binary segment wrong private key rejected");
+
+                const bq::string old_version_name = "appender_test/segment_old_version";
+                const bq::string old_version_path = TO_ABSOLUTE_PATH(old_version_name + "_1.bt", 0);
+                {
+                    appender_file_binary_for_test writer;
+                    test_ok = writer.init("segment_old_version", make_binary_recovery_test_config(old_version_name, ""), &log_obj)
+                        && writer.write_payload_for_test(make_segment_payload(102, 0));
+                }
+                file = bq::file_manager::instance().open_file(old_version_path, bq::file_open_mode_enum::read_write);
+                appender_file_binary::appender_file_header file_head;
+                bool old_version_rejected = test_ok && file
+                    && bq::file_manager::instance().read_file(file, &file_head, sizeof(file_head), bq::file_manager::seek_option::begin, 0) == sizeof(file_head);
+                file_head.version = 0;
+                old_version_rejected = old_version_rejected
+                    && bq::file_manager::instance().write_file(file, &file_head, sizeof(file_head), bq::file_manager::seek_option::begin, 0) == sizeof(file_head);
+                bq::file_manager::instance().close_file(file);
+                const size_t old_version_size = bq::file_manager::get_file_size(old_version_path);
+                {
+                    appender_file_binary_appender_recovery_for_test writer;
+                    old_version_rejected = old_version_rejected
+                        && writer.init("segment_old_version_append", make_binary_recovery_test_config(old_version_name, ""), &log_obj)
+                        && !writer.append_appender_recovery_to_file_for_test(old_version_path)
+                        && bq::file_manager::get_file_size(old_version_path) == old_version_size;
+                }
+                result.add_result(old_version_rejected, "binary segment old format recovery rejected");
+
+                const bq::string truncated_name = "appender_test/segment_truncated_metadata";
+                const bq::string truncated_path = TO_ABSOLUTE_PATH(truncated_name + "_1.bt", 0);
+                {
+                    appender_file_binary_for_test writer;
+                    test_ok = writer.init("segment_truncated", make_binary_recovery_test_config(truncated_name, pub_key_a), &log_obj)
+                        && writer.write_payload_for_test(make_segment_payload(103, 0));
+                }
+                file = bq::file_manager::instance().open_file(truncated_path, bq::file_open_mode_enum::read_write);
+                const size_t truncated_size = sizeof(appender_file_binary::appender_file_header)
+                    + sizeof(appender_file_binary::appender_file_segment_head) + sizeof(uint64_t) + 16;
+                bool truncated_rejected = test_ok && file
+                    && bq::file_manager::instance().truncate_file(file, truncated_size);
+                bq::file_manager::instance().close_file(file);
+                {
+                    appender_file_binary_appender_recovery_for_test writer;
+                    truncated_rejected = truncated_rejected
+                        && writer.init("segment_truncated_append", make_binary_recovery_test_config(truncated_name, ""), &log_obj)
+                        && !writer.append_appender_recovery_to_file_for_test(truncated_path)
+                        && bq::file_manager::get_file_size(truncated_path) == truncated_size;
+                }
+                result.add_result(truncated_rejected, "binary segment truncated encryption metadata rejected");
+
+                clear_appender_file_base_test_folder();
+                const bq::string encryption_switch_name = "appender_test/segment_encryption_switch";
+                const bq::string plaintext_path = TO_ABSOLUTE_PATH(encryption_switch_name + "_1.bt", 0);
+                const bq::string encrypted_path = TO_ABSOLUTE_PATH(encryption_switch_name + "_2.bt", 0);
+                bool encryption_switch_ok = false;
+                {
+                    appender_file_binary_for_test writer;
+                    encryption_switch_ok = writer.init("segment_switch_plain", make_binary_recovery_test_config(encryption_switch_name, ""), &log_obj)
+                        && writer.write_payload_for_test(make_segment_payload(104, 0));
+                }
+                {
+                    appender_file_binary_for_test writer;
+                    encryption_switch_ok = encryption_switch_ok
+                        && writer.init("segment_switch_encrypted", make_binary_recovery_test_config(encryption_switch_name, pub_key_a), &log_obj)
+                        && writer.write_payload_for_test(make_segment_payload(104, 1));
+                }
+                bq::array<appender_file_binary::appender_file_segment_head> plaintext_segments;
+                bq::array<appender_file_binary::appender_file_segment_head> encrypted_segments;
+                encryption_switch_ok = encryption_switch_ok
+                    && read_binary_segment_chain_for_test(plaintext_path, plaintext_segments)
+                    && plaintext_segments.size() == 1
+                    && plaintext_segments[0].enc_type == appender_file_binary::appender_encryption_type::plaintext
+                    && read_binary_segment_chain_for_test(encrypted_path, encrypted_segments)
+                    && encrypted_segments.size() == 1
+                    && encrypted_segments[0].enc_type == appender_file_binary::appender_encryption_type::rsa_aes_xor;
+                result.add_result(encryption_switch_ok, "normal appender encryption switch starts a new file");
             }
 
             static bq::property_value make_binary_recovery_test_config(const bq::string& file_name, const bq::string& pub_key)
@@ -642,6 +967,9 @@ namespace bq {
                 const auto source_enc_type = get_encryption_type(source_mode);
                 const auto target_enc_type = get_encryption_type(target_mode);
                 const bool append_to_source = source_mode == recovery_encryption_mode::plaintext && target_mode == recovery_encryption_mode::plaintext;
+                const bool appender_recovery_compatible = source_mode == recovery_encryption_mode::plaintext
+                    || target_mode == recovery_encryption_mode::plaintext
+                    || source_mode == target_mode;
                 bool segment_chain_ok = false;
                 if (append_to_source) {
                     segment_chain_ok = read_binary_segment_chain_for_test(source_file_path, source_segments)
@@ -654,15 +982,17 @@ namespace bq {
                         && !bq::file_manager::is_file(target_file_path);
                 } else {
                     segment_chain_ok = read_binary_segment_chain_for_test(source_file_path, source_segments)
-                        && source_segments.size() == 2
+                        && source_segments.size() == (appender_recovery_compatible ? 2 : 1)
                         && source_segments[0].enc_type == source_enc_type
-                        && source_segments[1].enc_type == target_enc_type
-                        && source_segments[1].seg_type == appender_file_binary::appender_segment_type::recovery_by_appender
                         && read_binary_segment_chain_for_test(target_file_path, target_segments)
                         && target_segments.size() == 2
                         && target_segments[0].enc_type == target_enc_type
                         && target_segments[1].enc_type == target_enc_type
                         && target_segments[1].seg_type == appender_file_binary::appender_segment_type::recovery_by_log_buffer;
+                    if (segment_chain_ok && appender_recovery_compatible) {
+                        segment_chain_ok = source_segments[1].enc_type == target_enc_type
+                            && source_segments[1].seg_type == appender_file_binary::appender_segment_type::recovery_by_appender;
+                    }
                 }
                 result.add_result(source_appender_ok && source_appender_mmap_ok && source_buffer_ok && target_log_ok && segment_chain_ok,
                     "mmap recovery case:%" PRIu32 " source:%s target:%s", case_index, get_encryption_mode_name(source_mode), get_encryption_mode_name(target_mode));
@@ -807,7 +1137,6 @@ namespace bq {
                     && segment_heads.size() == 2
                     && segment_heads[0].next_seg_pos != UINT64_MAX
                     && segment_heads[1].enc_type == appender_file_binary::appender_encryption_type::rsa_aes_xor
-                    && segment_heads[1].has_key
                     && segment_heads[1].seg_type == appender_file_binary::appender_segment_type::recovery_by_appender;
                 result.add_result(appender_recovery_ok, "appender recovery appends across an encryption boundary");
                 result.add_result(appender_chain_ok, "appender recovery links plaintext and encrypted segments without an orphan tail, segment_count:%zu", segment_heads.size());
