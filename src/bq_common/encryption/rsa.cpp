@@ -28,7 +28,11 @@ namespace bq {
         }
         bq::array<uint8_t> data;
         data.fill_uninitialized(n.size() + e.size() + sizeof(uint32_t) * 2);
-        uint8_t* cursor = data.begin();
+        uint8_t* data_begin = data.begin();
+        if (!data_begin) {
+            return 0;
+        }
+        uint8_t* cursor = data_begin;
         const uint32_t n_size = static_cast<uint32_t>(n.size());
         const uint32_t e_size = static_cast<uint32_t>(e.size());
         cursor[0] = static_cast<uint8_t>(n_size >> 24);
@@ -44,7 +48,7 @@ namespace bq {
         cursor[3] = static_cast<uint8_t>(e_size);
         cursor += sizeof(uint32_t);
         memcpy(cursor, e.begin(), e.size());
-        return bq::util::get_hash_64(data.begin(), data.size());
+        return bq::util::get_hash_64(data_begin, data.size());
     }
 
     static uint32_t load_u32_be(const uint8_t* p)
