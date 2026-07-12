@@ -113,6 +113,7 @@ public class log {
 		}
 	}
 
+	/** Receives console log entries. */
     @FunctionalInterface
     public interface console_callback_delegate{
         void callback(long log_id, int category_idx, bq.def.log_level log_level, String content);
@@ -129,6 +130,7 @@ public class log {
     private ByteBuffer merged_log_level_bitmap_ = null;
     private ByteBuffer categories_mask_array_ = null;
     private ByteBuffer print_stack_level_bitmap_ = null;
+	/** Category names configured for this log. */
     protected List<String> categories_name_array_ = null;
     private log_context context_ = null;
     
@@ -378,7 +380,8 @@ public class log {
     	log_invoker.__api_log_device_console(level.ordinal(), str);
     }
     
-    protected log()
+	/** Creates an empty log instance. */
+	protected log()
     {
     	
     }
@@ -510,6 +513,11 @@ public class log {
         return do_log(default_category_, log_level.verbose, log_format_content, args);
     }
     
+    /**
+     * Writes a debug log without format arguments.
+     * @param log_format_content The log content.
+     * @return Whether the log was written successfully.
+     */
     public boolean debug(String log_format_content)
     {
         return do_log(default_category_, log_level.debug, log_format_content);

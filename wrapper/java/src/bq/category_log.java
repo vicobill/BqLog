@@ -17,11 +17,16 @@ import java.util.List;
  *
  */
 public class category_log extends log{
+    /** Creates an empty category log instance. */
     protected category_log()
     {
         super();
     }
     
+    /**
+     * Creates a category log from another log instance.
+     * @param child_inst The source log instance.
+     */
     protected category_log(log child_inst)
     {
         super(child_inst);
