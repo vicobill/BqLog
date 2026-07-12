@@ -667,13 +667,16 @@ namespace bq {
                 bq::array<bq::string> file_list;
                 bq::string path = TO_ABSOLUTE_PATH("bqLog/UnitTestLog", 1);
                 bq::file_manager::get_all_files(path, file_list);
-                uint64_t earliest_modify_epoch_ms = UINT64_MAX;
+                int32_t earliest_file_index = INT32_MAX;
                 for (auto iter = file_list.begin(); iter != file_list.end(); ++iter) {
                     if (iter->end_with(ext_name)) {
-                        uint64_t modify_time = bq::file_manager::get_file_last_modified_epoch_ms(*iter);
-                        if (modify_time < earliest_modify_epoch_ms) {
+                        const char* index_begin = strrchr(iter->c_str(), '_');
+                        char* index_end = nullptr;
+                        int64_t file_index = index_begin ? strtoll(index_begin + 1, &index_end, 10) : -1;
+                        const char* ext_begin = iter->c_str() + iter->size() - ext_name.size();
+                        if (file_index >= 0 && file_index < earliest_file_index && index_end == ext_begin) {
                             file_path = *iter;
-                            earliest_modify_epoch_ms = modify_time;
+                            earliest_file_index = static_cast<int32_t>(file_index);
                         }
                     }
                 }
