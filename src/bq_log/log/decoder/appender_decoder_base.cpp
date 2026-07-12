@@ -235,9 +235,7 @@ namespace bq {
     appender_decode_result appender_decoder_base::read_to_next_segment()
     {
         auto new_seg_start_pos = cur_read_seg_.end_pos;
-        if (new_seg_start_pos == UINT64_MAX) {
-            return appender_decode_result::eof;
-        }
+        current_file_size_ = file_manager::instance().get_file_size(file_);
         if (!seek_read_file_absolute(static_cast<size_t>(new_seg_start_pos))) {
             return appender_decode_result::eof;
         }
@@ -297,7 +295,7 @@ namespace bq {
         auto last_seg_type = (new_seg_start_pos == sizeof(file_head_) ? appender_file_binary::appender_segment_type::normal : cur_read_seg_.seg_type);
         cur_read_seg_.enc_type = seg_head.enc_type;
         cur_read_seg_.start_pos = new_seg_start_pos;
-        cur_read_seg_.end_pos = seg_head.next_seg_pos;
+        cur_read_seg_.end_pos = seg_head.next_seg_pos == UINT64_MAX ? current_file_size : seg_head.next_seg_pos;
         cur_read_seg_.seg_type = seg_head.seg_type;
 
         bool is_last_seg_recover = (last_seg_type == appender_file_binary::appender_segment_type::recovery_by_appender
