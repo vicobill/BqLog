@@ -424,10 +424,11 @@ namespace bq {
         } else {
             head.timestamp_epoch = last_log_entry_epoch_ms_;
         }
-        if (is_recovered_entry) {
-            log_recovered(read_handle);
-        } else {
+        BQ_LIKELY_IF(!is_recovered_entry)
+        {
             log(read_handle);
+        } else {
+            log_recovered(read_handle);
         }
     }
 
