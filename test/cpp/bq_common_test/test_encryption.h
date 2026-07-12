@@ -444,15 +444,23 @@ rJjndnUwweqNEHGPf1PuBCvmXa5GPzla03pN44/YhywCWtxsrAGF9ayamEOG
                 test_result result;
                 test_vernam(result);
 
+#if defined(BQ_UNITE_TEST_LOW_PERFORMANCE_MODE)
+                constexpr uint32_t thread_count = 1;
+#else
                 constexpr uint32_t thread_count = 2;
+#endif
                 test_output(bq::log_level::info, "RSA test begin...");
                 bq::array<std::thread*> rsa_threads;
                 for (uint32_t i = 0; i < thread_count; ++i) {
                     rsa_threads.push_back(new std::thread([&result, this]() {
+#if defined(BQ_UNITE_TEST_LOW_PERFORMANCE_MODE)
+                        test_rsa(result, 2048, 1);
+#else
                         test_rsa(result, 1024, 2);
                         test_rsa(result, 2048, 2);
                         test_rsa(result, 3072, 1);
                         // test_rsa(result, 7680, 1);
+#endif
                     }));
                 }
                 for (uint32_t i = 0; i < thread_count; ++i) {
