@@ -2,13 +2,13 @@
   <img src="banner.jpg" alt="BqLog Banner" width="100%">
 </p>
 
-# BqLog (扁鹊日志) V 2.3.1
+# BqLog (扁鹊日志) V 2.3.2
 
 [English](./README.md) | **简体中文**
 
 [![license](https://img.shields.io/badge/license-APACHE2.0-brightgreen.svg?style=flat)](LICENSE.txt)
-[![Release Version](https://img.shields.io/badge/release-2.3.1-red.svg)](https://github.com/Tencent/BqLog/releases)
-[![ChangeLog](https://img.shields.io/badge/📋_更新日志-v2.3.1-orange.svg?style=flat)](CHANGELOG.md)
+[![Release Version](https://img.shields.io/badge/release-2.3.2-red.svg)](https://github.com/Tencent/BqLog/releases)
+[![ChangeLog](https://img.shields.io/badge/📋_更新日志-v2.3.2-orange.svg?style=flat)](CHANGELOG.md)
 [![GitHub Stars](https://img.shields.io/github/stars/Tencent/BqLog?style=flat&logo=github)](https://github.com/Tencent/BqLog/stargazers)
 [![GitHub Forks](https://img.shields.io/github/forks/Tencent/BqLog?style=flat&logo=github)](https://github.com/Tencent/BqLog/network/members)
 [![GitHub Issues](https://img.shields.io/github/issues/Tencent/BqLog?style=flat&logo=github)](https://github.com/Tencent/BqLog/issues)
@@ -22,14 +22,13 @@
 
 ---
 
-[![Download](https://img.shields.io/badge/⬇_下载-Release_2.3.1-blue.svg?style=for-the-badge)](https://github.com/Tencent/BqLog/releases/tag/Release_2.3.1)
+[![Download](https://img.shields.io/badge/⬇_下载-Release_2.3.2-blue.svg?style=for-the-badge)](https://github.com/Tencent/BqLog/releases/tag/Release_2.3.2)
 
-## 📋 v2.3.1 更新亮点
+## 📋 v2.3.2 更新亮点
 
-- **Bug 修复** — [磁盘满时崩溃 (SIGBUS) 或挂起 (#67)](https://github.com/Tencent/BqLog/issues/67)。
-- **Bug 修复** — [C# 和 Unity Editor `fetch_and_remove_console_buffer` 在 native 调用期间因 delegate 被 GC 回收偶发 Crash (#66)](https://github.com/Tencent/BqLog/issues/66)。
-- **Unreal Engine** — 新增 UE 5.8 支持；Fab、预编译版与源码版现已覆盖 UE 5.0 – 5.8。
-- **Unreal Engine 6** — 当前 UE6 开发版可通过 GitHub Release 页面中的 `ue6` 源码版和预编译版插件使用。由于 Epic 官方的 Fab 引擎支持目前只到 UE 5.8，UE6 暂不能通过 Fab 安装。
+- **Bug 修复** — [解码输出中嵌入的空字节 (null byte) 被丢弃 (#69)](https://github.com/Tencent/BqLog/issues/69)；日志解码器现已完整保留嵌入的空字节。
+- **Bug 修复** — 修复了在同一个日志文件上反复切换不同加密模式（混合加密多分段）这一极端场景下的解码与复盘（recovery）问题。
+- **健壮性** — 强化了损坏日志文件的解析，并改进 truncate 校验与 mmap 分配，使磁盘空间不足的错误在映射访问前暴露出来。
 
 > 完整更新日志 → [CHANGELOG.md](CHANGELOG.md)
 

@@ -1,5 +1,11 @@
 # Changelog
 
+## [v2.3.2] - 2026-07-12
+- **Bug fix**: [Embedded null bytes were dropped in decoder output #69](https://github.com/Tencent/BqLog/issues/69) — the log decoder now preserves embedded null bytes intact.
+- **Bug fix**: Fixed decoding and recovery in the extreme case where different encryption modes are switched repeatedly within the same log file (mixed-encryption multi-segment), so such files now decode and recover correctly.
+- **Robustness**: Hardened parsing of corrupted log files (guarding against unexpected-size memory allocations) and improved truncate validation and mmap allocation so disk-space errors surface before mapping access.
+- **Docs**: Completed missing Java wrapper API comments (Javadoc).
+
 ## [v2.3.1] - 2026-06-16
 - **Bug fix**: [Library crashes (SIGBUS) or hangs when the disk is full #67](https://github.com/Tencent/BqLog/issues/67)
 - **Bug fix**: [\[C#\] \[\[Unity Editor\] fetch_and_remove_console_buffer occasionally crashes — delegate recycled by GC during native call #66](https://github.com/Tencent/BqLog/issues/66)

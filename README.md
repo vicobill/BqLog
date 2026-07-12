@@ -2,13 +2,13 @@
   <img src="banner.jpg" alt="BqLog Banner" width="100%">
 </p>
 
-# BqLog (BianQue Log) V 2.3.1
+# BqLog (BianQue Log) V 2.3.2
 
 **English** | [简体中文](./README_CHS.md)
 
 [![license](https://img.shields.io/badge/license-APACHE2.0-brightgreen.svg?style=flat)](LICENSE.txt)
-[![Release Version](https://img.shields.io/badge/release-2.3.1-red.svg)](https://github.com/Tencent/BqLog/releases)
-[![ChangeLog](https://img.shields.io/badge/📋_ChangeLog-v2.3.1-orange.svg?style=flat)](CHANGELOG.md)
+[![Release Version](https://img.shields.io/badge/release-2.3.2-red.svg)](https://github.com/Tencent/BqLog/releases)
+[![ChangeLog](https://img.shields.io/badge/📋_ChangeLog-v2.3.2-orange.svg?style=flat)](CHANGELOG.md)
 [![GitHub Stars](https://img.shields.io/github/stars/Tencent/BqLog?style=flat&logo=github)](https://github.com/Tencent/BqLog/stargazers)
 [![GitHub Forks](https://img.shields.io/github/forks/Tencent/BqLog?style=flat&logo=github)](https://github.com/Tencent/BqLog/network/members)
 [![GitHub Issues](https://img.shields.io/github/issues/Tencent/BqLog?style=flat&logo=github)](https://github.com/Tencent/BqLog/issues)
@@ -22,14 +22,13 @@
 
 ---
 
-[![Download](https://img.shields.io/badge/⬇_Download-Release_2.3.1-blue.svg?style=for-the-badge)](https://github.com/Tencent/BqLog/releases/tag/Release_2.3.1)
+[![Download](https://img.shields.io/badge/⬇_Download-Release_2.3.2-blue.svg?style=for-the-badge)](https://github.com/Tencent/BqLog/releases/tag/Release_2.3.2)
 
-## 📋 What's New in v2.3.1
+## 📋 What's New in v2.3.2
 
-- **Bug fix** — [Library crashes (SIGBUS) or hangs when the disk is full (#67)](https://github.com/Tencent/BqLog/issues/67).
-- **Bug fix** — [C# and Unity Editor `fetch_and_remove_console_buffer` occasionally crashes due to delegate being recycled by GC during native call (#66)](https://github.com/Tencent/BqLog/issues/66).
-- **Unreal Engine** — Added UE 5.8 support; Fab, Prebuilt, and Source distributions now cover UE 5.0 – 5.8.
-- **Unreal Engine 6** — Current UE6 development builds are supported through the `ue6` Source and Prebuilt plugins on the GitHub Release page. UE6 is not yet available through Fab because Epic's official Fab engine support currently ends at UE 5.8.
+- **Bug fix** — [Embedded null bytes were dropped in decoder output (#69)](https://github.com/Tencent/BqLog/issues/69); the log decoder now preserves embedded null bytes intact.
+- **Bug fix** — Fixed decoding and recovery for the extreme case where different encryption modes are switched repeatedly within the same log file (mixed-encryption multi-segment).
+- **Robustness** — Hardened parsing of corrupted log files, plus better truncate validation and mmap allocation so disk-space errors surface before mapping access.
 
 > Full changelog → [CHANGELOG.md](CHANGELOG.md)
 
