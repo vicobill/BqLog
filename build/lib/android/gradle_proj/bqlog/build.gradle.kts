@@ -51,6 +51,7 @@ android {
     externalNativeBuild {
         cmake {
             path = file("../../../../../src/CMakeLists.txt")
+            version = "3.22.1"
         }
     }
     
@@ -125,4 +126,3 @@ tasks.named("assemble") {
     finalizedBy("copyAarDebug")
     finalizedBy("copyJavadocJar")
 }
-

@@ -301,6 +301,19 @@ jobs:
         id: setup-android
         uses: android-actions/setup-android@v4
 
+      - name: Install Android CMake
+        shell: pwsh
+        run: |
+          $cmakeDir = Join-Path $env:ANDROID_SDK_ROOT "cmake\3.22.1"
+          for ($attempt = 1; $attempt -le 3; $attempt++) {
+            if (Test-Path (Join-Path $cmakeDir "bin\cmake.exe")) { exit 0 }
+            Remove-Item $cmakeDir -Recurse -Force -ErrorAction SilentlyContinue
+            sdkmanager "cmake;3.22.1"
+            if ($LASTEXITCODE -eq 0 -and (Test-Path (Join-Path $cmakeDir "bin\cmake.exe"))) { exit 0 }
+            Start-Sleep -Seconds (30 * $attempt)
+          }
+          throw "Failed to install Android CMake 3.22.1"
+
       - name: Set up NDK
         uses: nttld/setup-ndk@v1
         id: setup-ndk
