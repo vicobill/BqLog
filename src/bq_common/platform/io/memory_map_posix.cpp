@@ -1,5 +1,4 @@
-﻿/*
- * Copyright (C) 2024 Tencent.
+/* Copyright (C) 2025 Tencent.
  * BQLOG is licensed under the Apache License, Version 2.0.
  * You may obtain a copy of the License at
  *
@@ -9,23 +8,21 @@
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  */
-#include "bq_common/bq_common.h"
-#if BQ_POSIX
-#include <stdio.h>
+#include "bq_common/platform/io/memory_map_posix.h"
+#if defined(BQ_POSIX)
 #include <unistd.h>
 #include <sys/mman.h>
 
 namespace bq {
     static size_t get_memory_map_size_unit()
     {
-        return (size_t)getpagesize();
+        return common_global_vars::get().page_size_;
     }
-
 
     bool memory_map::is_platform_support()
     {
         static_assert(sizeof(size_t) <= sizeof(memory_map_handle::platform_data_), "memory_map_handle::platform_data_ size not enough");
-#if BQ_ANDROID || BQ_APPLE || BQ_LINUX || BQ_UNIX
+#if defined(BQ_ANDROID) || defined(BQ_APPLE) || defined(BQ_LINUX) || defined(BQ_UNIX)
         return true;
 #else
         return false;
@@ -48,7 +45,6 @@ namespace bq {
         }
 
         auto fd = map_file.platform_handle();
-        auto current_size = lseek(fd, 0, SEEK_END);
 
         // alignment
         size_t real_mapping_offset = get_real_map_offset(offset);
@@ -56,17 +52,58 @@ namespace bq {
         size_t alignment_offset = offset - get_real_map_offset(offset);
         size_t real_min_file_size = get_min_size_of_memory_map_file(offset, size);
         assert(real_min_file_size == real_mapping_offset + real_mapping_size);
-        if ((size_t)current_size < real_min_file_size) {
-            if (0 != ftruncate(fd, (off_t)(real_min_file_size))) {
-                bq::util::log_device_console(log_level::warning, "create_memory_map ftruncate() file failed, path:%s, error_code:%d", map_file.abs_file_path().c_str(), errno);
+
+        // Materialize the whole mapping range with real disk blocks before mapping.
+        // ftruncate only changes the logical file size and leaves holes. Writing to
+        // a hole page through a MAP_SHARED mapping needs a block allocation at page
+        // fault time, which raises SIGBUS when the disk is full. So we rewrite the
+        // range block by block instead: existing content is read and written back
+        // unchanged (recovery data is preserved), holes and the range beyond EOF
+        // become zero-filled allocated blocks, and ENOSPC is reported here as a
+        // normal error so the caller can fall back to heap memory.
+        {
+            char chunk[4096];
+            size_t pos = 0;
+            while (pos < real_min_file_size) {
+                size_t chunk_size = bq::min_value(sizeof(chunk), real_min_file_size - pos);
+                ssize_t read_bytes = pread(fd, chunk, chunk_size, (off_t)pos);
+                if (read_bytes < 0) {
+                    if (errno == EINTR) {
+                        continue;
+                    }
+                    // a real read error (e.g. EIO) would also fault later through the
+                    // mapping, and writing zeros back would destroy recoverable data,
+                    // so fail here and let the caller fall back to heap memory
+                    result.error_code_ = errno;
+                    bq::util::log_device_console(log_level::warning, "create_memory_map materialize file failed, path:%s, error_code:%" PRId32, map_file.abs_file_path().c_str(), result.error_code_);
+                    return result;
+                }
+                // a short read only happens at EOF for regular files, pad with zeros
+                if ((size_t)read_bytes < chunk_size) {
+                    memset(chunk + read_bytes, 0, chunk_size - (size_t)read_bytes);
+                }
+                size_t written = 0;
+                while (written < chunk_size) {
+                    ssize_t write_bytes = pwrite(fd, chunk + written, chunk_size - written, (off_t)(pos + written));
+                    if (write_bytes < 0) {
+                        if (errno == EINTR) {
+                            continue;
+                        }
+                        result.error_code_ = errno;
+                        bq::util::log_device_console(log_level::warning, "create_memory_map materialize file failed, path:%s, error_code:%" PRId32, map_file.abs_file_path().c_str(), result.error_code_);
+                        return result;
+                    }
+                    written += (size_t)write_bytes;
+                }
+                pos += chunk_size;
             }
         }
 
-        result.real_data_ = mmap(NULL, real_mapping_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, real_mapping_offset);
+        result.real_data_ = mmap(NULL, real_mapping_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, static_cast<off_t>(real_mapping_offset));
 
         if (MAP_FAILED == result.real_data_) {
             result.error_code_ = errno;
-            bq::util::log_device_console(log_level::error, "create_memory_map file failed, path:%s, error_code:%d", map_file.abs_file_path().c_str(), result.error_code_);
+            bq::util::log_device_console(log_level::error, "create_memory_map file failed, path:%s, error_code:%" PRId32, map_file.abs_file_path().c_str(), result.error_code_);
             return result;
         }
 
@@ -82,8 +119,8 @@ namespace bq {
 #ifndef NDEBUG
         assert(handle.has_been_mapped() && "flush_memory_map can not be called without create_memory_map and map_to_memory");
 #endif
-        if (0 != msync(handle.real_data_, *(size_t*)handle.platform_data_, MS_SYNC)) {
-            bq::util::log_device_console(log_level::error, "flush_memory_map file failed, error_code:%d", errno);
+        if (0 != msync(handle.real_data_, *(const size_t*)handle.platform_data_, MS_SYNC)) {
+            bq::util::log_device_console(log_level::error, "flush_memory_map file failed, error_code:%" PRId32, errno);
         }
     }
 
@@ -92,8 +129,8 @@ namespace bq {
         if (!handle.has_been_mapped()) {
             return;
         }
-        if (0 != munmap(handle.real_data_, *(size_t*)handle.platform_data_)) {
-            bq::util::log_device_console(log_level::error, "release_memory_map file failed, error_code:%d", errno);
+        if (0 != munmap(handle.real_data_, *(const size_t*)handle.platform_data_)) {
+            bq::util::log_device_console(log_level::error, "release_memory_map file failed, error_code:%" PRId32, errno);
         }
         handle.file_.invalid();
         memset(&handle.platform_data_, 0, sizeof(handle.platform_data_));

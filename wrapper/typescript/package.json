@@ -1,0 +1,67 @@
+{
+  "name": "@pippocao/bqlog",
+  "version": "1.0.0",
+  "description": "High-performance cross-platform logging library for Node.js, with native C++ core. Supports sync/async modes, compressed file appenders, category logging, and more.",
+  "license": "Apache-2.0",
+  "author": "pippocao",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Tencent/BqLog.git",
+    "directory": "wrapper/typescript"
+  },
+  "homepage": "https://github.com/Tencent/BqLog",
+  "bugs": {
+    "url": "https://github.com/Tencent/BqLog/issues"
+  },
+  "keywords": [
+    "log",
+    "logger",
+    "logging",
+    "bqlog",
+    "high-performance",
+    "native",
+    "napi",
+    "async",
+    "compressed",
+    "category",
+    "cross-platform",
+    "game-engine"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js",
+      "types": "./dist/types/index.d.ts"
+    }
+  },
+  "main": "./dist/cjs/index.cjs",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/types/index.d.ts",
+  "files": [
+    "dist",
+    "prebuilds",
+    "*.md",
+    "*.MD",
+    "doc",
+    "LICENSE"
+  ],
+  "scripts": {
+    "prebuild:esm": "node -e \"const fs=require('fs');const p='src/bq/utils/lib_loader.ts',bak='src/bq/utils/lib_loader.bak';if(fs.existsSync(p))fs.copyFileSync(p,bak);fs.copyFileSync('src/bq/utils/lib_loader.esm.txt',p)\"",
+    "build:esm": "tsc -p tsconfig.esm.json",
+    "postbuild:esm": "node -e \"const fs=require('fs');const p='src/bq/utils/lib_loader.ts',bak='src/bq/utils/lib_loader.bak';if(fs.existsSync(bak)){fs.copyFileSync(bak,p);fs.unlinkSync(bak)}\" && node scripts/fix_esm_extensions.cjs",
+    "prebuild:cjs": "node -e \"const fs=require('fs');const p='src/bq/utils/lib_loader.ts',bak='src/bq/utils/lib_loader.bak';if(fs.existsSync(p))fs.copyFileSync(p,bak);fs.copyFileSync('src/bq/utils/lib_loader.cjs.txt',p)\"",
+    "build:cjs": "tsc -p tsconfig.cjs.json",
+    "postbuild:cjs": "node -e \"const fs=require('fs');const p='src/bq/utils/lib_loader.ts',bak='src/bq/utils/lib_loader.bak';if(fs.existsSync(bak)){fs.copyFileSync(bak,p);fs.unlinkSync(bak)}\" && node -e \"const fs=require('fs');fs.mkdirSync('dist/cjs',{recursive:true});fs.writeFileSync('dist/cjs/package.json',JSON.stringify({type:'commonjs'},null,2))\"",
+    "build": "npm run build:esm && npm run build:cjs",
+    "prepublishOnly": "node -e \"require('fs').copyFileSync('README.nodejs.md','README.md')\" && npm run build",
+    "postpublish": "node -e \"try{require('fs').unlinkSync('README.md')}catch(e){}\""
+  },
+  "devDependencies": {
+    "@types/node": "^22.18.6",
+    "typescript": "^5.9.2"
+  },
+  "engines": {
+    "node": ">=16"
+  }
+}

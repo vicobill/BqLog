@@ -1,6 +1,6 @@
 package bq;
 /*
- * Copyright (C) 2024 Tencent.
+ * Copyright (C) 2025 Tencent.
  * BQLOG is licensed under the Apache License, Version 2.0.
  * You may obtain a copy of the License at
  * 
@@ -10,12 +10,14 @@ package bq;
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  */
+import java.io.File;
+import java.io.InputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.List;
 import java.util.ArrayList;
-import java.util.Map;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import bq.def.*;
 import bq.impl.*;
 
@@ -26,77 +28,151 @@ import bq.impl.*;
 public class log {
 	static {
 		try {
-			System.loadLibrary(bq.lib_def.lib_name);
-		}catch(Exception e)
-		{
+			// On Android the .so is extracted by the OS installer from the AAR,
+			// so the standard loadLibrary path always works.
+			boolean is_android = System.getProperty("java.vm.name", "").contains("Dalvik")
+					|| System.getProperty("java.vendor", "").toLowerCase().contains("android");
+			if (is_android) {
+				System.loadLibrary(bq.lib_def.lib_name);
+			} else {
+				// For fat-JAR (Maven) distribution: try to locate the bundled native
+				// library under /natives/<os_token>-<arch_token>/<lib_file_name> inside
+				// the JAR, extract it to a temp file, and load it from there.
+				// Falls back to System.loadLibrary so that developers who build
+				// locally and manage java.library.path themselves are unaffected.
+				boolean loaded = false;
+				String os_name  = System.getProperty("os.name",  "").toLowerCase();
+				String os_arch  = System.getProperty("os.arch",  "").toLowerCase();
+
+				// Normalise arch to match CI staging directory names
+				String arch_token;
+				if      (os_arch.equals("amd64")   || os_arch.equals("x86_64"))                      arch_token = "x86_64";
+				else if (os_arch.equals("aarch64") || os_arch.equals("arm64"))                        arch_token = "arm64";
+				else if (os_arch.equals("x86")     || os_arch.equals("i386") || os_arch.equals("i686")) arch_token = "x86";
+				else                                                                                   arch_token = os_arch;
+
+				// Normalise OS and choose the library file name
+				String os_token;
+				String lib_file_name;
+				if (os_name.contains("win")) {
+					os_token      = "windows";
+					lib_file_name = bq.lib_def.lib_name + ".dll";
+				} else if (os_name.contains("mac") || os_name.contains("darwin")) {
+					os_token      = "macos";
+					lib_file_name = "lib" + bq.lib_def.lib_name + ".dylib";
+				} else if (os_name.contains("freebsd")) {
+					os_token      = "freebsd";
+					lib_file_name = "lib" + bq.lib_def.lib_name + ".so";
+				} else if (os_name.contains("openbsd")) {
+					os_token      = "openbsd";
+					lib_file_name = "lib" + bq.lib_def.lib_name + ".so";
+				} else if (os_name.contains("netbsd")) {
+					os_token      = "netbsd";
+					lib_file_name = "lib" + bq.lib_def.lib_name + ".so";
+				} else if (os_name.contains("dragonfly")) {
+					os_token      = "dragonfly";
+					lib_file_name = "lib" + bq.lib_def.lib_name + ".so";
+				} else if (os_name.contains("sunos") || os_name.contains("solaris")) {
+					os_token      = "sunos";
+					lib_file_name = "lib" + bq.lib_def.lib_name + ".so";
+				} else {
+					// Linux and any other POSIX-like system
+					os_token      = "linux";
+					lib_file_name = "lib" + bq.lib_def.lib_name + ".so";
+				}
+
+				// Suffix for the temp file so the OS links the right extension
+				String lib_suffix = lib_file_name.substring(lib_file_name.lastIndexOf('.'));
+				String resource_path = "/natives/" + os_token + "-" + arch_token + "/" + lib_file_name;
+
+				try (InputStream in = log.class.getResourceAsStream(resource_path)) {
+					if (in != null) {
+						File tmp = File.createTempFile(bq.lib_def.lib_name + "_", lib_suffix);
+						tmp.deleteOnExit();
+						Files.copy(in, tmp.toPath(), StandardCopyOption.REPLACE_EXISTING);
+						System.load(tmp.getAbsolutePath());
+						loaded = true;
+					}
+				} catch (IOException e) {
+					// Extraction failed; fall through to loadLibrary
+				}
+
+				if (!loaded) {
+					System.loadLibrary(bq.lib_def.lib_name);
+				}
+			}
+			Runtime.getRuntime().addShutdownHook(new Thread() {
+				@Override
+				public void run() {
+					log_invoker.__api_mark_jvm_destroyed();
+				}
+			});
+		} catch(Exception e) {
 			System.err.println("Failed to Load " + bq.lib_def.lib_name);
 			System.err.println(e.getMessage());
 		}
 	}
 
+	/** Receives console log entries. */
     @FunctionalInterface
-    public interface console_callbck_delegate{
-        void callback(long log_id, int category_idx, int log_level, String content);
+    public interface console_callback_delegate{
+        void callback(long log_id, int category_idx, bq.def.log_level log_level, String content);
     }
     
 	private static log_category_base default_category_ = new log_category_base() {
 		@SuppressWarnings("unused")
 		protected long index = 0L;
 	};
-    private static ConcurrentLinkedQueue<console_callbck_delegate> console_callbck_delegates_ = new ConcurrentLinkedQueue<console_callbck_delegate>();
-	private static java.util.concurrent.locks.ReentrantLock console_callback_lock_ = new java.util.concurrent.locks.ReentrantLock();
-	
+    private static console_callback_delegate console_callback_delegate_ = null;
+
 	private long log_id_ = 0;
     private String name_ = "";
     private ByteBuffer merged_log_level_bitmap_ = null;
     private ByteBuffer categories_mask_array_ = null;
     private ByteBuffer print_stack_level_bitmap_ = null;
+	/** Category names configured for this log. */
     protected List<String> categories_name_array_ = null;
     private log_context context_ = null;
     
     protected static log get_log_by_id(long log_id)
     {
-        log log = new log();
+        log log_inst = new log();
         String name = log_invoker.__api_get_log_name_by_id(log_id);
         if (null == name)
         {
-            return log;
+            return log_inst;
         }
-        log.name_ = name;
-        log.merged_log_level_bitmap_ = log_invoker.__api_get_log_merged_log_level_bitmap_by_log_id(log_id);
-        log.merged_log_level_bitmap_.order(ByteOrder.LITTLE_ENDIAN);
-        log.categories_mask_array_ = log_invoker.__api_get_log_category_masks_array_by_log_id(log_id);
-        log.categories_mask_array_.order(ByteOrder.LITTLE_ENDIAN);
-        log.print_stack_level_bitmap_ = log_invoker.__api_get_log_print_stack_level_bitmap_by_log_id(log_id);
-        log.print_stack_level_bitmap_.order(ByteOrder.LITTLE_ENDIAN);
+        log_inst.name_ = name;
+        log_inst.merged_log_level_bitmap_ = log_invoker.__api_get_log_merged_log_level_bitmap_by_log_id(log_id);
+        log_inst.categories_mask_array_ = log_invoker.__api_get_log_category_masks_array_by_log_id(log_id);
+        log_inst.print_stack_level_bitmap_ = log_invoker.__api_get_log_print_stack_level_bitmap_by_log_id(log_id);
 
         long category_count = log_invoker.__api_get_log_categories_count(log_id);
-        log.categories_name_array_ = new ArrayList<String>((int)category_count);
+        log_inst.categories_name_array_ = new ArrayList<String>((int)category_count);
         for (long i = 0; i < category_count; ++i)
         {
             String category_item_name = log_invoker.__api_get_log_category_name_by_index(log_id, i);
             if (null != category_item_name)
             {
-                log.categories_name_array_.add(category_item_name);
+                log_inst.categories_name_array_.add(category_item_name);
             }
         }
-        log.log_id_ = log_id;
-        log.context_ = new bq.impl.log_context(log);
-        return log;
+        log_inst.log_id_ = log_id;
+        log_inst.context_ = new bq.impl.log_context();
+        return log_inst;
     }
 
     @SuppressWarnings("unused")
-	private static void native_console_callbck(long log_id, int category_idx, int log_level, String content)
+	private static void native_console_callback(long log_id, int category_idx, int log_level, String content)
     {
-    	for(console_callbck_delegate callback_obj : console_callbck_delegates_)
-    	{
-    		callback_obj.callback(log_id, category_idx, log_level, content);
-    	}
+        if(console_callback_delegate_ != null){
+            console_callback_delegate_.callback(log_id, category_idx, bq.def.log_level.values()[log_level], content);
+        }
     }
     @SuppressWarnings("unused")
-	private static void native_console_buffer_fetch_and_remove_callbck(console_callbck_delegate callback_obj, long log_id, int category_idx, int log_level, String content)
+	private static void native_console_buffer_fetch_and_remove_callback(console_callback_delegate callback_obj, long log_id, int category_idx, int log_level, String content)
     {
-		callback_obj.callback(log_id, category_idx, log_level, content);
+		callback_obj.callback(log_id, category_idx, bq.def.log_level.values()[log_level], content);
     }
     private boolean is_enable_for(log_category_base category, log_level level)
     {
@@ -130,23 +206,24 @@ public class log {
             }
             log_format_content = sb.toString();
         }
-    	Map.Entry<long[], ByteBuffer> handle = context_.begin_copy(this, category, level, log_format_content, param_storage_size);
-        if(null == handle)
+    	ByteBuffer ring_buffer = context_.begin_copy(this, category, level, log_format_content, param_storage_size);
+        if(null == ring_buffer)
         {
             return false;
         }
-        ByteBuffer ring_buffer = handle.getValue();
-        for (Object o : args)
-        {
-        	context_.add_param_no_optimized(ring_buffer, o);
+        if(param_storage_size > 0) {
+            for (Object o : args)
+            {
+            	context_.add_param_no_optimized(ring_buffer, o);
+            }
+            context_.end_copy(this);
         }
-        context_.end_copy(this, handle);
         return true;
     }
     
     /**
      * Get bqLog lib version
-     * @return
+     * @return The bqLog library version.
      */
     public static String get_version()
     {
@@ -164,15 +241,25 @@ public class log {
     }
 
     /**
-     * If bqLog is stored in a relative path, it will choose whether the relative path is within the sandbox or not.
+     * If bqLog is stored in a relative path, the base dir is determined by the value of base_dir_type.
      * This will return the absolute paths corresponding to both scenarios.
-     * @param is_in_sandbox
-     * @return
+     * @param base_dir_type The base directory type.
+     * @return The corresponding absolute base directory path.
      */
-    public static String get_file_base_dir(boolean is_in_sandbox)
+    public static String get_file_base_dir(int base_dir_type)
     {
-        return log_invoker.__api_get_file_base_dir(is_in_sandbox);
+        return log_invoker.__api_get_file_base_dir(base_dir_type);
     }
+	
+	/**
+	 * Reset the base dir
+	 * @param base_dir_type The base directory type.
+	 * @param dir The new base directory path.
+	 */
+	public static void reset_base_dir(int base_dir_type, String dir)
+	{
+		bq.impl.log_invoker.__api_reset_base_dir(base_dir_type, dir);
+	}
     
     /**
      * Create a log object
@@ -229,51 +316,39 @@ public class log {
     {
         log_invoker.__api_force_flush(0);
     }
-    
-    
-    /**
-     * Uninitialize BqLog, please invoke this function before your program exist.
-     */
-    public static void uninit()
-    {
-    	log_invoker.__api_uninit();
-    }
 
     /**
      * Register a callback that will be invoked whenever a console log message is output. 
      * This can be used for an external system to monitor console log output.
-     * @param callback
+     * @param callback The callback to register, or {@code null} to disable callbacks.
      */
-    public static void register_console_callback(console_callbck_delegate callback)
+    public static void register_console_callback(console_callback_delegate callback)
     {
-    	console_callback_lock_.lock();
-        console_callbck_delegates_.offer(callback);
-        if(console_callbck_delegates_.size() == 1)
-        {
+        console_callback_delegate_ = callback;
+        if(null != console_callback_delegate_){
             log_invoker.__api_set_console_callback(true);
+        }else {
+            log_invoker.__api_set_console_callback(false);
         }
-        console_callback_lock_.unlock();
     }
 
     /**
-     * @param Unregister console callback.
+     * Unregister a previously registered console callback.
+     * @param callback The callback to unregister.
      */
-    public static void unregister_console_callback(console_callbck_delegate callback)
+    public static void unregister_console_callback(console_callback_delegate callback)
     {
-    	console_callback_lock_.lock();
-        console_callbck_delegates_.remove(callback);
-        if(console_callbck_delegates_.size() == 0)
-        {
+        if(console_callback_delegate_ == callback){
+            console_callback_delegate_ = null;
             log_invoker.__api_set_console_callback(false);
         }
-        console_callback_lock_.unlock();
     }
     
     /**
      * Enable or disable the console appender buffer. 
      * Since our wrapper may run in both C# and Java virtual machines, and we do not want to directly invoke callbacks from a native thread, 
      * we can enable this option. This way, all console outputs will be saved in the buffer until we fetch them.
-     * @param enable
+     * @param enable Whether console appender buffering is enabled.
      */
     public static void set_console_buffer_enable(boolean enable)
     {
@@ -289,7 +364,7 @@ public class log {
      * @return
      *        True if the console appender buffer is not empty and a log entry is fetched; otherwise False is returned.
      */
-    public static boolean fetch_and_remove_console_buffer(console_callbck_delegate on_console_callback)
+    public static boolean fetch_and_remove_console_buffer(console_callback_delegate on_console_callback)
     {
     	return log_invoker.__api_fetch_and_remove_console_buffer(on_console_callback);
     }
@@ -297,34 +372,32 @@ public class log {
     /**
      * Output to console with log_level.
      * Important: This is not log entry, and can not be caught by console callback which was registered by register_console_callback or fetch_and_remove_console_buffer
-     * @param level
-     * @param str
+     * @param level The console log level.
+     * @param str The text to output.
      */
     public static void console(log_level level, String str)
     {
     	log_invoker.__api_log_device_console(level.ordinal(), str);
     }
     
-    protected log()
+	/** Creates an empty log instance. */
+	protected log()
     {
     	
     }
     
     /**
      * copy constructor
-     * @param rhs
+     * @param rhs The log object to copy.
      */
-    public log(log rhs)
+    protected log(log rhs)
     {
     	merged_log_level_bitmap_ = rhs.merged_log_level_bitmap_;
         name_ = rhs.name_;
         log_id_ = rhs.log_id_;
         merged_log_level_bitmap_ = log_invoker.__api_get_log_merged_log_level_bitmap_by_log_id(log_id_);
-        merged_log_level_bitmap_.order(ByteOrder.LITTLE_ENDIAN);
         categories_mask_array_ = log_invoker.__api_get_log_category_masks_array_by_log_id(log_id_);
-        categories_mask_array_.order(ByteOrder.LITTLE_ENDIAN);
         print_stack_level_bitmap_ = log_invoker.__api_get_log_print_stack_level_bitmap_by_log_id(log_id_);
-        print_stack_level_bitmap_.order(ByteOrder.LITTLE_ENDIAN);
 
         long category_count = log_invoker.__api_get_log_categories_count(log_id_);
         categories_name_array_ = new ArrayList<String>((int)category_count);
@@ -336,12 +409,12 @@ public class log {
                 categories_name_array_.add(category_item_name);
             }
         }
-        context_ = new bq.impl.log_context(this);
+        context_ = new bq.impl.log_context();
     }
     
     /**
      * Modify the log configuration, but some fields, such as buffer_size, cannot be modified.
-     * @param config
+     * @param config The new log configuration string.
      */
     public void reset_config(String config)
     {
@@ -354,12 +427,12 @@ public class log {
 
     /**
      * Temporarily disable or enable a specific Appender.
-     * @param appender_name
-     * @param enable
+     * @param appender_name The appender name.
+     * @param enable Whether the appender is enabled.
      */
-    public void set_appenders_enable(String appender_name, boolean enable)
+    public void set_appender_enable(String appender_name, boolean enable)
     {
-        log_invoker.__api_set_appenders_enable(log_id_, appender_name, enable);
+        log_invoker.__api_set_appender_enable(log_id_, appender_name, enable);
     }
     
     /**
@@ -373,7 +446,7 @@ public class log {
 
     /**
      * Get id of this log object
-     * @return
+     * @return The log object identifier.
      */
     public long get_id()
     {
@@ -382,7 +455,7 @@ public class log {
     
     /**
      * Whether a log object is valid
-     * @return
+     * @return {@code true} if this log object is valid; otherwise {@code false}.
      */
     public boolean is_valid()
     {
@@ -391,7 +464,7 @@ public class log {
 
     /**
      * Get the name of a log
-     * @return
+     * @return The log name.
      */
     public String get_name()
     {
@@ -401,14 +474,15 @@ public class log {
 	/**
 	 * Works only when snapshot is configured.
 	 * It will decode the snapshot buffer to text.
-	 * @param use_gmt_time
-	 * 			Whether the timestamp of each log is GMT time or local time
+	 * @param time_zone_config
+	 * 			Use this to specify the time display of log text.
+	 *          such as : "localtime", "gmt", "Z", "UTC", "UTC+8", "UTC-11", "utc+11:30"
 	 * @return
 	 * 			The decoded snapshot buffer
 	 */
-	public String take_snapshot(boolean use_gmt_time)
+	public String take_snapshot(String time_zone_config)
 	{
-		return bq.impl.log_invoker.__api_take_snapshot_string(log_id_, use_gmt_time);
+		return bq.impl.log_invoker.__api_take_snapshot_string(log_id_, time_zone_config);
 	}
 
     @Override
@@ -429,25 +503,60 @@ public class log {
 
 	///Core log functions, there are 6 log levels:
 	///verbose, debug, info, warning, error, fatal
+	///
+    public boolean verbose(String log_format_content)
+    {
+        return do_log(default_category_, log_level.verbose, log_format_content);
+    }
     public boolean verbose(String log_format_content, Object... args)
     {
         return do_log(default_category_, log_level.verbose, log_format_content, args);
+    }
+    
+    /**
+     * Writes a debug log without format arguments.
+     * @param log_format_content The log content.
+     * @return Whether the log was written successfully.
+     */
+    public boolean debug(String log_format_content)
+    {
+        return do_log(default_category_, log_level.debug, log_format_content);
     }
     public boolean debug(String log_format_content, Object... args)
     {
         return do_log(default_category_, log_level.debug, log_format_content, args);
     }
+
+    public boolean info(String log_format_content)
+    {
+        return do_log(default_category_, log_level.info, log_format_content);
+    }
     public boolean info(String log_format_content, Object... args)
     {
         return do_log(default_category_, log_level.info, log_format_content, args);
+    }
+    
+    public boolean warning(String log_format_content)
+    {
+        return do_log(default_category_, log_level.warning, log_format_content);
     }
     public boolean warning(String log_format_content, Object... args)
     {
         return do_log(default_category_, log_level.warning, log_format_content, args);
     }
+    
+    public boolean error(String log_format_content)
+    {
+        return do_log(default_category_, log_level.error, log_format_content);
+    } 
     public boolean error(String log_format_content, Object... args)
     {
         return do_log(default_category_, log_level.error, log_format_content, args);
+    }
+    
+    public boolean fatal(String log_format_content)
+    {
+        return do_log(default_category_, log_level.fatal, log_format_content);
     }
     public boolean fatal(String log_format_content, Object... args)
     {

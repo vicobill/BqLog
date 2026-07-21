@@ -1,6 +1,6 @@
 package bq.def;
 /*
- * Copyright (C) 2024 Tencent.
+ * Copyright (C) 2025 Tencent.
  * BQLOG is licensed under the Apache License, Version 2.0.
  * You may obtain a copy of the License at
  * 
@@ -13,9 +13,8 @@ package bq.def;
 
 import java.util.AbstractMap.SimpleEntry;
 
+/** Internal Java wrapper constants. */
 public class constants {
-	public static final int size_of_uint32 = 4;
-	public static final int size_of_uint64 = 8;
-	
+	/** Runtime class of packed parameter wrappers. */
 	public static final Class<?> cls_param_wrapper = new SimpleEntry<int[], long[]>(new int[1], new long[2]).getClass();
 }

@@ -1,6 +1,4 @@
-﻿#pragma once
-/*
- * Copyright (C) 2024 Tencent.
+/* Copyright (C) 2025 Tencent.
  * BQLOG is licensed under the Apache License, Version 2.0.
  * You may obtain a copy of the License at
  *
@@ -10,6 +8,7 @@
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  */
+#pragma once
 #include "bq_common/bq_common.h"
 #include "bq_log/log/log_types.h"
 
@@ -32,6 +31,7 @@ namespace bq {
         platform::condition_variable trigger_;
         platform::mutex mutex_;
         platform::atomic<bool> wait_flag_;
+        platform::atomic<bool> awake_flag_;
 
     public:
         log_worker();
@@ -44,7 +44,25 @@ namespace bq {
             return thread_mode_ == log_thread_mode::async;
         }
 
-        void awake();
+        bq_forceinline log_thread_mode get_thread_mode() const
+        {
+            return thread_mode_;
+        }
+
+        bq_forceinline log_imp* get_log_target() const
+        {
+            return log_target_;
+        }
+
+        bq_forceinline void awake()
+        {
+            bool origin_value = awake_flag_.exchange_relaxed(false);
+            if (origin_value) {
+                mutex_.lock();
+                trigger_.notify_all();
+                mutex_.unlock();
+            }
+        }
 
         // These two function must be called in pair
         void awake_and_wait_begin(log_imp* log_target_for_pub_worker = nullptr);
@@ -52,5 +70,14 @@ namespace bq {
 
     protected:
         virtual void run() override;
+    };
+
+    // Sometime, the log worker thread may be terminated by external code(for example, on the console callback in Mono)
+    // We need a watch dog to restart the thread.
+    struct log_worker_watch_dog {
+        bq::platform::thread::thread_id thread_id_ = 0;
+        log_worker* worker_ptr_ = nullptr;
+
+        ~log_worker_watch_dog();
     };
 }

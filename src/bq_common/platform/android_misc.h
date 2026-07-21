@@ -1,6 +1,4 @@
-﻿#pragma once
-/*
- * Copyright (C) 2024 Tencent.
+/* Copyright (C) 2025 Tencent.
  * BQLOG is licensed under the Apache License, Version 2.0.
  * You may obtain a copy of the License at
  *
@@ -10,13 +8,12 @@
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  */
-#if BQ_ANDROID
-#include <errno.h>
-#include <stdarg.h>
-#include <stdio.h>
-#include "bq_common/platform/macros.h"
-#include "bq_common/types/array.h"
-#include "bq_common/types/string.h"
+#pragma once
+
+#include "bq_common/bq_common_public_include.h"
+#if defined(BQ_ANDROID)
+#include <android/log.h>
+#include <android/asset_manager_jni.h>
 
 namespace bq {
     namespace platform {
@@ -40,6 +37,9 @@ namespace bq {
                 return asset != nullptr;
             }
         };
+        const bq::string& get_android_id();
+
+        const bq::string& get_package_name();
 
         jobject get_global_context();
 

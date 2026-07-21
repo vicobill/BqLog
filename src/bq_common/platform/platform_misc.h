@@ -1,6 +1,4 @@
-﻿#pragma once
-/*
- * Copyright (C) 2024 Tencent.
+/* Copyright (C) 2025 Tencent.
  * BQLOG is licensed under the Apache License, Version 2.0.
  * You may obtain a copy of the License at
  *
@@ -10,14 +8,15 @@
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  */
-#include <errno.h>
-#include <stdarg.h>
-#include <stdio.h>
-#include <stdint.h>
-#include "bq_common/platform/macros.h"
-#include "bq_common/types/array.h"
-#include "bq_common/types/string.h"
+#pragma once
 
+#include "bq_common/bq_common_public_include.h"
+#if defined(BQ_POSIX)
+#include "bq_common/platform/posix_misc.h"
+#endif
+#if defined(BQ_NAPI)
+#include "bq_common/platform/napi_misc.h"
+#endif
 #if defined(BQ_JAVA)
 #include "bq_common/platform/java_misc.h"
 #endif
@@ -42,8 +41,8 @@
 #if defined(BQ_PS)
 #include "bq_common/platform/ps_misc.h"
 #endif
-#if defined(BQ_POSIX)
-#include "bq_common/platform/posix_misc.h"
+#if defined(BQ_OHOS)
+#include "bq_common/platform/ohos_misc.h"
 #endif
 
 namespace bq {
@@ -69,13 +68,25 @@ namespace bq {
             return static_cast<file_open_mode_enum>(static_cast<int32_t>(lhs) & static_cast<int32_t>(rhs));
         }
 
-        //to avoid Static Initialization Order Fiasco
-        void init_for_file_manager();
+        struct base_dir_initializer {
+        private:
+            bq::string base_dir_0_;
+            bq::string base_dir_1_;
+
+        public:
+            const bq::string& get_base_dir_0() const { return base_dir_0_; }
+            const bq::string& get_base_dir_1() const { return base_dir_1_; }
+
+            void set_base_dir_0(const bq::string& dir);
+            void set_base_dir_1(const bq::string& dir);
+
+            base_dir_initializer();
+        };
 
         // TODO optimize use TSC
         uint64_t high_performance_epoch_ms();
 
-        const bq::string& get_base_dir(bool is_sandbox);
+        bq::string get_base_dir(int32_t base_dir_type);
 
         int32_t get_file_size(const char* file_path, size_t& size_ref);
 
@@ -101,6 +112,8 @@ namespace bq {
 
         int32_t flush_file(const platform_file_handle& file_handle);
 
+        uint64_t get_file_last_modified_epoch_ms(const char* path);
+
         bq::array<bq::string> get_all_sub_names(const char* path);
 
         bool lock_file(const platform_file_handle& file_handle); // make file write exclusive
@@ -120,5 +133,34 @@ namespace bq {
 
         void get_stack_trace(uint32_t skip_frame_count, const char*& out_str_ptr, uint32_t& out_char_count);
         void get_stack_trace_utf16(uint32_t skip_frame_count, const char16_t*& out_str_ptr, uint32_t& out_char_count);
+
+        void* aligned_alloc(size_t alignment, size_t size);
+        void aligned_free(void* ptr);
+
+#if defined(BQ_UNIT_TEST)
+        // Test-only fault-injection hooks for disk-full / OOM scenarios.
+        // These let the unit tests reproduce ENOSPC and heap-exhaustion code paths
+        // deterministically across all platforms without needing a real full disk.
+        // Compiled out entirely in release builds.
+        namespace test_inject {
+            enum class fault_kind : int32_t {
+                none = 0,
+                enospc_on_open, // open_file() returns ENOSPC / ERROR_DISK_FULL
+                enospc_on_write, // write_file() returns ENOSPC and writes zero bytes
+            };
+            void set_fault(fault_kind kind);
+            fault_kind get_fault();
+
+            // When a path filter is set, only paths that contain the filter substring
+            // trigger the fault. nullptr / empty filter triggers on all paths.
+            void set_path_filter(const char* substring);
+            bool path_matches_filter(const char* path);
+
+            // Independent OOM hook: makes bq::normal_buffer's heap fallback alloc
+            // return null, simulating "mmap fails AND heap fails" on disk full + OOM.
+            void set_normal_buffer_alloc_fail(bool fail);
+            bool get_normal_buffer_alloc_fail();
+        }
+#endif
     }
 }
