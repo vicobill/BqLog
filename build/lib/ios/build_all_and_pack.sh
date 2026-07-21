@@ -7,7 +7,7 @@ pushd "XCodeProj" >/dev/null
 BUILD_LIB_TYPES=(dynamic_lib static_lib)
 APPLE_LIB_FORMATS=(framework framework)
 BUILD_CONFIGS=(Debug MinSizeRel Release RelWithDebInfo)
-TARGET_PLATFORMS=(OS64 SIMULATOR64COMBINED TVOS SIMULATORARM64_TVOS VISIONOS SIMULATOR_VISIONOS WATCHOS SIMULATOR_WATCHOSCOMBINED)
+TARGET_PLATFORMS=(OS64 SIMULATOR64 SIMULATOR64COMBINED TVOS SIMULATORARM64_TVOS VISIONOS SIMULATOR_VISIONOS WATCHOS SIMULATOR_WATCHOSCOMBINED)
 
 rm -rf "../../../artifacts"
 rm -rf "../../../install"
@@ -97,7 +97,49 @@ for (( i=1; i<=${#BUILD_LIB_TYPES[@]}; i++ )); do
     rm -rf "${OUTPUT_PATH}"
     echo "Creating XCFramework for configuration: ${build_config}:"
     xcodebuild -create-xcframework "${XCFRAMEWORK_ARGS[@]}" -output "${OUTPUT_PATH}"
-  done
+
+      UNIVERSAL_FRAMEWORK_OUTPUT="../../../../install/${BUILD_LIB_TYPE}/lib/${build_config}/BqLog-universal.framework"
+      DEVICE_FRAMEWORK="../../../../install/${BUILD_LIB_TYPE}/stage/OS64/lib/${build_config}/BqLog.framework"
+      SIMULATOR_FRAMEWORK="../../../../install/${BUILD_LIB_TYPE}/stage/SIMULATOR64/lib/${build_config}/BqLog.framework"
+
+      if [ -d "${DEVICE_FRAMEWORK}" ] && [ -d "${SIMULATOR_FRAMEWORK}" ]; then
+        rm -rf "${UNIVERSAL_FRAMEWORK_OUTPUT}"
+        cp -R "${DEVICE_FRAMEWORK}" "${UNIVERSAL_FRAMEWORK_OUTPUT}"
+
+        DEVICE_BINARY="${DEVICE_FRAMEWORK}/BqLog"
+        SIMULATOR_BINARY="${SIMULATOR_FRAMEWORK}/BqLog"
+        UNIVERSAL_BINARY="${UNIVERSAL_FRAMEWORK_OUTPUT}/BqLog"
+
+        echo "Creating universal framework at ${UNIVERSAL_FRAMEWORK_OUTPUT}"
+        echo "Combining device binary (arm64): ${DEVICE_BINARY}"
+        echo "Combining simulator binary (x86_64): ${SIMULATOR_BINARY}"
+
+        lipo -create "${DEVICE_BINARY}" "${SIMULATOR_BINARY}" -output "${UNIVERSAL_BINARY}"
+
+        echo "Validating universal framework architecture:"
+        lipo -info "${UNIVERSAL_BINARY}"
+
+        echo "Binary file type:"
+        file "${UNIVERSAL_BINARY}"
+
+        ARCHS_IN_BINARY=$(lipo -info "${UNIVERSAL_BINARY}" | grep -oE "(arm64|x86_64)")
+        if echo "${ARCHS_IN_BINARY}" | grep -q "arm64" && echo "${ARCHS_IN_BINARY}" | grep -q "x86_64"; then
+          echo "✅ Universal framework validation passed: contains both arm64 and x86_64"
+        else
+          echo "❌ Universal framework validation failed: missing architectures"
+          lipo -info "${UNIVERSAL_BINARY}"
+          exit 1
+        fi
+      else
+        echo "Skipping universal framework creation: device or simulator framework not found"
+        if [ ! -d "${DEVICE_FRAMEWORK}" ]; then
+          echo "  Device framework not found: ${DEVICE_FRAMEWORK}"
+        fi
+        if [ ! -d "${SIMULATOR_FRAMEWORK}" ]; then
+          echo "  Simulator framework not found: ${SIMULATOR_FRAMEWORK}"
+        fi
+      fi
+    done
   rm -rf ../../../../install/${BUILD_LIB_TYPE}/stage
 done
 

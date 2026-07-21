@@ -1,5 +1,7 @@
 #!/bin/zsh
 
+PLATFORM=${1:-OS64}
+
 rm -rf XCodeProj
 mkdir -p XCodeProj
 pushd "XCodeProj" >/dev/null
@@ -7,7 +9,7 @@ pushd "XCodeProj" >/dev/null
 cmake ../../../../src \
     -G Xcode \
     -DCMAKE_TOOLCHAIN_FILE=../ios.toolchain.cmake \
-    -DPLATFORM=OS64 \
+    -DPLATFORM=${PLATFORM} \
     -DDEPLOYMENT_TARGET=9.0 \
     -DCPP_VER=14 \
     -DBUILD_LIB_TYPE=dynamic_lib \
@@ -17,5 +19,5 @@ cmake ../../../../src \
 popd >/dev/null
 
 echo "---------"
-echo "Finished!"
+echo "Finished! Generated Xcode project for PLATFORM=${PLATFORM}"
 echo "---------"

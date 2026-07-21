@@ -4,26 +4,26 @@ static IUnityLog* s_Logger;
 
 static void InitBqLog();
 static void UnInitBqLog();
-static bq::Log GetBqLog();
+static bq::log GetBqLog();
 
-static void OnBqLog(uint64_t logId, int32_t categoryIndex, int32_t logLevel, 
-	const char* content, int32_t length)
+static void OnBqLog(unsigned long long logId, int categoryIndex, bq::log_level logLevel, 
+	const char* content, int length)
 {
 	(void)length;
 	(void)categoryIndex;
 	(void)logId;
 
 	switch (logLevel) {
-	case (int32_t)bq::ELogLevel::verbose:
-	case (int32_t)bq::ELogLevel::debug:
-	case (int32_t)bq::ELogLevel::info:
+	case bq::log_level::verbose:
+	case bq::log_level::debug:
+	case bq::log_level::info:
 		UNITY_LOG(s_Logger, content);
 		break;
-	case (int32_t)bq::ELogLevel::warning:
+	case bq::log_level::warning:
 		UNITY_LOG_WARNING(s_Logger, content);
 		break;
-	case (int32_t)bq::ELogLevel::error:
-	case (int32_t)bq::ELogLevel::fatal:
+	case bq::log_level::error:
+	case bq::log_level::fatal:
 		UNITY_LOG_ERROR(s_Logger, content);
 		break;
 	default:
@@ -31,8 +31,8 @@ static void OnBqLog(uint64_t logId, int32_t categoryIndex, int32_t logLevel,
 	}
 }
 
-bq::Log GetBqLog() { 
-	return bq::Log::get_log_by_name("UnityLog"); 
+bq::log GetBqLog() { 
+	return bq::log::get_log_by_name("UnityLog"); 
 }
 
 #define QLOG(msg)	UNITY_WRAP_CODE(UNITY_LOG(s_Logger,msg);GetBqLog().info(msg))
@@ -78,16 +78,16 @@ void InitBqLog() {
 		return;
 	}
 
-	bq::Log l = bq::Log::create_log("UnityLog", config);
+	bq::log l = bq::log::create_log("UnityLog", config);
 	l.enable_auto_crash_handle();
 
-	bq::Log::register_console_callback(&OnBqLog);
+	bq::log::register_console_callback(&OnBqLog);
 }
 
 void UnInitBqLog() {
-	bq::Log l = GetBqLog();
+	bq::log l = GetBqLog();
 	l.force_flush_all_logs();
-	l.uninit();
+	//l.uninit();
 }
 
 
