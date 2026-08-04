@@ -1,12 +1,14 @@
 #include "UnityPluginAPI/IUnityLog.h"
 #include <bq_log/bq_log.h>
+#include <stdint.h>
+
 static IUnityLog* s_Logger;
 
 static void InitBqLog();
 static void UnInitBqLog();
 static bq::log GetBqLog();
 
-static void OnBqLog(unsigned long long logId, int categoryIndex, bq::log_level logLevel, 
+static void OnBqLog(uint64_t logId, int categoryIndex, bq::log_level logLevel, 
 	const char* content, int length)
 {
 	(void)length;

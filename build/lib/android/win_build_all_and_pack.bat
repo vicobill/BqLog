@@ -13,9 +13,14 @@ If not exist "%ANDROID_NDK_ROOT%" (
 
 Echo Android NDK Found: %ANDROID_NDK_ROOT%
 
+if not defined GRADLE_HOME (
+    echo GRADLE_HOME is not defined! Build Cancelled!
+    goto :fail
+)
+
 echo Building Android AAR...
 pushd gradle_proj
-call gradlew.bat assemble || exit /b 1
+call %GRADLE_HOME%\bin\gradle.bat assemble || exit /b 1
 popd
 
 if exist "pack" rd /s /q "pack"
