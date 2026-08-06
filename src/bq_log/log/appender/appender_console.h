@@ -22,6 +22,7 @@ namespace bq {
         private:
             friend void _default_console_callback_dispacher(bq::log_level level, const char* text);
             bq::platform::spin_lock lock_;
+            bq::platform::thread::thread_id creator_thread_id_ = 0;
 
         public:
             void register_callback(bq::type_func_ptr_console_callback callback);

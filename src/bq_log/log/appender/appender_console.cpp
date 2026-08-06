@@ -27,14 +27,20 @@ namespace bq {
     void BQ_STDCALL _default_console_callback_dispacher(bq::log_level level, const char* text)
     {
         if (console_callback_) {
-            auto& data = _tls_console_callback_data;
-            if (data.length_ == 0 && text) {
-                data.length_ = static_cast<int32_t>(strlen(text));
+            auto current_thread_id = bq::platform::thread::get_current_thread_id();
+            auto& callback_mgr = appender_console::get_console_misc().callback();
+            if (current_thread_id == callback_mgr.creator_thread_id_) {
+                auto& data = _tls_console_callback_data;
+                if (data.length_ == 0 && text) {
+                    data.length_ = static_cast<int32_t>(strlen(text));
+                }
+                console_callback_(data.log_id_, data.category_idx_, level, text, data.length_);
+                data.category_idx_ = 0;
+                data.length_ = 0;
+                data.log_id_ = 0;
+            } else {
+                bq::util::_default_console_output(level, text);
             }
-            console_callback_(data.log_id_, data.category_idx_, level, text, data.length_);
-            data.category_idx_ = 0;
-            data.length_ = 0;
-            data.log_id_ = 0;
         } else {
             bq::util::_default_console_output(level, text);
         }
@@ -45,8 +51,10 @@ namespace bq {
         bq::platform::scoped_spin_lock lock(lock_);
         console_callback_ = callback;
         if (callback) {
+            creator_thread_id_ = bq::platform::thread::get_current_thread_id();
             bq::util::set_console_output_callback(&_default_console_callback_dispacher);
         } else {
+            creator_thread_id_ = 0;
             bq::util::set_console_output_callback(nullptr);
         }
     }
