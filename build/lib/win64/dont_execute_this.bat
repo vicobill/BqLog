@@ -240,7 +240,7 @@ cd "%PROJ_DIR%" || exit /b 1
 
 set "SRC_DIR=..\..\..\..\src"
 @REM set "CONFIGS=Debug MinSizeRel RelWithDebInfo Release"
-set "CONFIGS=Release"
+set "CONFIGS=RelWithDebInfo Release"
 
 if /I "%COMPILER_TYPE%"=="mingw" (
   for %%c in (%CONFIGS%) do (
