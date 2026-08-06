@@ -63,6 +63,8 @@ namespace bq {
         static void set_console_buffer_enable(bool enable);
         static bool fetch_and_remove_from_console_buffer(bq::type_func_ptr_console_buffer_fetch_callback callback, const void* pass_through_param);
 
+          // private:
+        static console_static_misc& get_console_misc();
     protected:
         virtual bool init_impl(const bq::property_value& config_obj) override;
         virtual bool reset_impl(const bq::property_value& config_obj) override;
@@ -70,8 +72,7 @@ namespace bq {
         virtual bool on_log_item_recovery_begin(bq::log_entry_handle& read_handle) override;
         virtual void on_log_item_recovery_end() override;
 
-    private:
-        static console_static_misc& get_console_misc();
+  
 
     private:
         bq::string log_name_prefix_;
