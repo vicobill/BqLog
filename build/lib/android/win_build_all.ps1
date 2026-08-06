@@ -8,6 +8,7 @@
         .\win_build_all.ps1 all  [java] [node] [python] [dynamic_lib|static_lib|both]
         .\win_build_all.ps1 build [java] [node] [python] [dynamic_lib|static_lib|both]
         .\win_build_all.ps1 pack
+        .\win_build_all.ps1 inspect   (inspect exported symbols of existing .so files)
 
     Normalized values:
         java,node,python : ON | OFF
@@ -32,7 +33,8 @@ $REPO_ROOT = Resolve-Path "$SCRIPT_DIR\..\..\.."
 $SRC_DIR = "$REPO_ROOT\src"
 $PACK_DIR = "$REPO_ROOT\pack"
 
-$BuildConfigs = @("Debug", "MinSizeRel", "RelWithDebInfo", "Release")
+# $BuildConfigs = @("Debug", "MinSizeRel", "RelWithDebInfo", "Release")
+$BuildConfigs = @("Release")
 
 # Android ABIs to build
 $ANDROID_ABIS = @("arm64-v8a", "armeabi-v7a")
@@ -86,8 +88,9 @@ function Ask-BuildLibType {
     while ($true) {
         $c = Read-Host "Enter choice (S/D)"
         switch ($c.ToUpper()) {
-            "S" { $script:BUILD_LIB_TYPE = "static_lib"; break }
-            "D" { $script:BUILD_LIB_TYPE = "dynamic_lib"; break }
+            "S" { $script:BUILD_LIB_TYPE = "static_lib"; return }
+            "D" { $script:BUILD_LIB_TYPE = "dynamic_lib"; return }
+            default { Write-Host "Invalid choice. Please enter S or D." }
         }
     }
 }
@@ -268,6 +271,7 @@ function Build-OnePair {
                     "-DTARGET_PLATFORM:STRING=android",
                     "-DBUILD_LIB_TYPE:STRING=$BuildLibType",
                     "-DJAVA_SUPPORT:BOOL=$JAVA_SUPPORT",
+                    "-DJNI_SUPPORT:BOOL=$JNI_SUPPORT",
                     "-DNODE_API_SUPPORT:BOOL=$NODE_API_SUPPORT",
                     "-DPYTHON_SUPPORT:BOOL=$PYTHON_SUPPORT",
                     "-DCMAKE_BUILD_TYPE=$cfg",
@@ -365,6 +369,83 @@ function Do-Pack {
 }
 
 # ============================================================
+# Inspect .so Exported Symbols
+# ============================================================
+
+function Find-NDK-Binutils {
+    # Modern NDK (r22+) ships only LLVM binutils: llvm-nm.exe / llvm-objdump.exe.
+    # Older NDKs may provide nm.exe / objdump.exe (GCC-style prefixes). Support both.
+    $llvmDir = "$ANDROID_NDK\toolchains\llvm\prebuilt"
+    if (Test-Path $llvmDir) {
+        $hostDir = Get-ChildItem -Path $llvmDir -Directory | Sort-Object Name -Descending | Select-Object -First 1
+        if ($hostDir) {
+            $bin = "$($hostDir.FullName)\bin"
+            if ((Test-Path "$bin\llvm-nm.exe") -or (Test-Path "$bin\nm.exe")) {
+                return $bin
+            }
+        }
+    }
+    return $null
+}
+
+function Inspect-SoSymbols {
+    Write-Host ""
+    Write-Host "===== Inspect .so Exported Symbols ====="
+    Write-Host "========================================"
+    Write-Host ""
+
+    $binutils = Find-NDK-Binutils
+    if (-not $binutils) {
+        Write-Warning "Could not locate NDK binutils (llvm-nm/llvm-objdump). Skipping symbol inspection."
+        return
+    }
+
+    # Use LLVM binutils if present (modern NDK), otherwise fall back to nm/objdump (older NDK).
+    $nmTool = if (Test-Path "$binutils\llvm-nm.exe") { "llvm-nm.exe" } else { "nm.exe" }
+    $objdumpTool = if (Test-Path "$binutils\llvm-objdump.exe") { "llvm-objdump.exe" } else { "objdump.exe" }
+
+    # Locate built dynamic libraries under install (or artifacts)
+    $searchRoots = @(
+        "$REPO_ROOT\install",
+        "$REPO_ROOT\artifacts"
+    )
+
+    $foundAny = $false
+    foreach ($root in $searchRoots) {
+        if (-not (Test-Path $root)) { continue }
+
+        $soFiles = Get-ChildItem -Path $root -Recurse -Filter "*.so" -File
+        foreach ($so in $soFiles) {
+            $foundAny = $true
+            Write-Host "--------------------------------------------------------"
+            Write-Host "  File: $($so.FullName)"
+            Write-Host "  ABI : $($so.Directory.Parent.Name)"
+            Write-Host "--------------------------------------------------------"
+
+            # 'nm -D --defined-only' lists dynamic (exported) symbols defined in the .so
+            Write-Host "--- Exported (defined) dynamic symbols ($nmTool -D --defined-only) ---"
+            & "$binutils\$nmTool" -D --defined-only $so.FullName
+            if ($LASTEXITCODE -ne 0) {
+                Write-Warning "$nmTool failed on $($so.FullName)"
+            }
+
+            Write-Host ""
+            Write-Host "--- Exported symbols via $objdumpTool -T (dynamic symbol table) ---"
+            & "$binutils\$objdumpTool" -T $so.FullName
+            if ($LASTEXITCODE -ne 0) {
+                Write-Warning "$objdumpTool failed on $($so.FullName)"
+            }
+
+            Write-Host ""
+        }
+    }
+
+    if (-not $foundAny) {
+        Write-Host "No .so files found under: $($searchRoots -join ', ')"
+    }
+}
+
+# ============================================================
 # Main
 # ============================================================
 
@@ -395,29 +476,34 @@ if (-not $ANDROID_NDK) {
 }
 Write-Host "Using Android NDK: $ANDROID_NDK"
 
-# Locate Ninja
-$NINJA_PATH = Find-Ninja
-if (-not $NINJA_PATH) {
-    $NINJA_PATH = Read-Host "Could not auto-detect Ninja. Please enter the full path to ninja.exe"
-    if (-not (Test-Path $NINJA_PATH)) {
-        throw "Invalid Ninja path: $NINJA_PATH"
+# For 'inspect' only the NDK binutils are needed; skip Ninja/CMake detection.
+if ($Action -ne "inspect") {
+    # Locate Ninja
+    $NINJA_PATH = Find-Ninja
+    if (-not $NINJA_PATH) {
+        $NINJA_PATH = Read-Host "Could not auto-detect Ninja. Please enter the full path to ninja.exe"
+        if (-not (Test-Path $NINJA_PATH)) {
+            throw "Invalid Ninja path: $NINJA_PATH"
+        }
     }
-}
-Write-Host "Using Ninja: $NINJA_PATH"
+    Write-Host "Using Ninja: $NINJA_PATH"
 
-# Locate CMake
-$CMAKE_PATH = Find-CMake
-if (-not $CMAKE_PATH) {
-    $CMAKE_PATH = Read-Host "Could not auto-detect CMake. Please enter the full path to cmake.exe"
-    if (-not (Test-Path $CMAKE_PATH)) {
-        throw "Invalid CMake path: $CMAKE_PATH"
+    # Locate CMake
+    $CMAKE_PATH = Find-CMake
+    if (-not $CMAKE_PATH) {
+        $CMAKE_PATH = Read-Host "Could not auto-detect CMake. Please enter the full path to cmake.exe"
+        if (-not (Test-Path $CMAKE_PATH)) {
+            throw "Invalid CMake path: $CMAKE_PATH"
+        }
     }
+    Write-Host "Using CMake: $CMAKE_PATH"
 }
-Write-Host "Using CMake: $CMAKE_PATH"
 
-# Clean previous artifacts
-Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "$REPO_ROOT\artifacts"
-Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "$REPO_ROOT\install"
+# Clean previous artifacts (skip for 'inspect' so existing .so files are preserved)
+if ($Action -ne "inspect") {
+    Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "$REPO_ROOT\artifacts"
+    Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "$REPO_ROOT\install"
+}
 
 # Dispatch action
 switch ($Action) {
@@ -435,6 +521,7 @@ switch ($Action) {
         $BUILD_LIB_TYPE_ALL = if ($BUILD_LIB_TYPE) { $BUILD_LIB_TYPE } else { "both" }
         Build-AllCombos
         Do-Pack
+        Inspect-SoSymbols
         Write-Host "---------"
         Write-Host "Finished!"
         Write-Host "---------"
@@ -448,6 +535,7 @@ switch ($Action) {
         foreach ($abi in $ANDROID_ABIS) {
             Build-OnePair $BUILD_LIB_TYPE $abi
         }
+        Inspect-SoSymbols
         Write-Host "---------"
         Write-Host "Finished!"
         Write-Host "---------"
@@ -458,9 +546,15 @@ switch ($Action) {
         Write-Host "Finished!"
         Write-Host "---------"
     }
+    "inspect" {
+        Inspect-SoSymbols
+        Write-Host "---------"
+        Write-Host "Finished!"
+        Write-Host "---------"
+    }
     default {
         Write-Host "Unknown action: $Action"
-        Write-Host "Supported: all | build | pack"
+        Write-Host "Supported: all | build | pack | inspect"
         exit 2
     }
 }

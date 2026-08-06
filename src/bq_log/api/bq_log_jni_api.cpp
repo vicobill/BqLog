@@ -10,7 +10,7 @@
  */
 #include "bq_log/api/bq_log_jni_api.h"
 
-#if defined(BQ_JAVA)
+#if defined(BQ_JAVA) && defined(BQ_JNI)
 #include "bq_common/bq_common.h"
 #include "bq_log/bq_log.h"
 #include "bq_log/global/log_vars.h"
@@ -475,6 +475,7 @@ JNIEXPORT void JNICALL Java_bq_impl_log_1invoker__1_1api_1mark_1jvm_1destroyed(J
     bq::common_global_vars::get().mark_jvm_destroyed();
     bq::util::log_device_console(bq::log_level::info, "JVM is destroying");
 }
+
 
 #ifdef __cplusplus
 }
