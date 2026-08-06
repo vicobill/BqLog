@@ -112,8 +112,8 @@ UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
 UnityPluginUnload()
 {
     UNITY_LOG(s_Logger, "Native Log Plugin unload");
+    UnInitBqLog();
     s_Logger = nullptr;
-	UnInitBqLog();
 }
  
 

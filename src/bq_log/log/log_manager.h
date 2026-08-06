@@ -43,13 +43,16 @@ namespace bq {
         log_imp* get_log_by_index(uint32_t index);
 
         bq_forceinline static log_imp* get_log_by_id(uint64_t log_id)
-        {
-            if (!log_id) {
-                return nullptr;
-            }
-            log_id ^= log_id_magic_number;
-            return reinterpret_cast<log_imp*>((uintptr_t)(log_id));
+    {
+        if (!log_id) {
+            return nullptr;
         }
+        if (instance().phase_.load(bq::platform::memory_order::acquire) != phase::working) {
+            return nullptr;
+        }
+        log_id ^= log_id_magic_number;
+        return reinterpret_cast<log_imp*>((uintptr_t)(log_id));
+    }
 
         void force_flush_all();
 
